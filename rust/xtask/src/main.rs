@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use std::fs;
 use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command};
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -81,7 +81,7 @@ fn setup_godot(root: &Path) -> Result<()> {
     }
 
     // Download Editor
-    let version_tag = GODOT_VERSION; 
+    let version_tag = GODOT_VERSION;
     let url = format!("{BASE_URL}/{version_tag}/Godot_v{version_tag}_{zip_suffix}");
     
     println!("Downloading Godot from: {}", url);
