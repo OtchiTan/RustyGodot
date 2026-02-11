@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-package:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Install Rust toolchain
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cache Rust dependencies to speed up future builds
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+
+      # Linux-specific: Install libraries required by Godot to export/run headless
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1 libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libasound2-dev
+
+      # SETUP: Downloads Godot Engine & Export Templates
+      - name: Setup Godot
+        run: cargo xtask setup
+
+      # BUILD: Compiles Rust and moves GDExtension files
+      - name: Build Rust (Release)
+        run: cargo xtask build --release
+
+      # PACKAGE: Generates export_presets.cfg and exports the game
+      - name: Package Game
+        run: cargo xtask package
+
+      # UPLOAD: Save the exported game as an artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-build-${{ matrix.os }}
+          path: builds/
+          if-no-files-found: error
