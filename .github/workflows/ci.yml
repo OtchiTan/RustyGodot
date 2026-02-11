@@ -45,6 +45,33 @@ jobs:
       - name: Build Rust (Release)
         run: cargo xtask build --release
 
+      # Install Godot Export Templates
+      - name: Install Godot Export Templates
+        shell: bash
+        run: |
+          VERSION="4.6"
+          STATUS="stable"
+
+          # Set Template Directory based on Matrix OS
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            TEMPLATE_DIR="/c/Users/runneradmin/AppData/Roaming/Godot/export_templates/${VERSION}.${STATUS}"
+          else
+            TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/${VERSION}.${STATUS}"
+          fi
+
+          # Download and Extract
+          mkdir -p "$TEMPLATE_DIR"
+          URL="https://github.com/godotengine/godot/releases/download/${VERSION}-${STATUS}/Godot_v${VERSION}-${STATUS}_export_templates.tpz"
+
+          echo "Downloading templates to $TEMPLATE_DIR..."
+          curl -L "$URL" -o templates.zip
+          unzip templates.zip -d "$TEMPLATE_DIR"
+
+          # Godot templates are inside a 'templates/' folder in the zip; move them up
+          mv "$TEMPLATE_DIR/templates/"* "$TEMPLATE_DIR/"
+          rm -rf "$TEMPLATE_DIR/templates"
+          rm templates.zip
+
       # PACKAGE: Generates export_presets.cfg and exports the game
       - name: Package Game
         run: cargo xtask package
