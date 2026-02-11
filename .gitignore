@@ -1,0 +1,52 @@
+# ------------------------------------------------------------------------------
+# Rust & Cargo
+# ------------------------------------------------------------------------------
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# ------------------------------------------------------------------------------
+# Godot 4
+# ------------------------------------------------------------------------------
+# Godot 4.x import cache and internal files
+.godot/
+
+# Export presets (Uncomment if you want to keep specific export settings in git,
+# otherwise the build script auto-generates a default one)
+# game/export_presets.cfg
+
+# ------------------------------------------------------------------------------
+# Build Pipeline (cargo xtask)
+# ------------------------------------------------------------------------------
+# The folder where we download the Godot Editor binary
+.godot_bin/
+
+# The folder where the GDExtension binaries (.dll, .so, .dylib) are copied to
+game/bin/
+
+# The folder where the final exported game packages go
+builds/
+
+# ------------------------------------------------------------------------------
+# JetBrains IDEs (RustRover, CLion, Rider)
+# ------------------------------------------------------------------------------
+# We ignore the user-specific workspace (window layout, open files)
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/dictionaries
+.idea/tasks.xml
+.idea/shelf
+
+# BUT we keep the rest (modules, run configurations) as requested
+!.idea/
+
+# ------------------------------------------------------------------------------
+# OS Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

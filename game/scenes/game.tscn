@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://cufci385o641h"]
+
+[ext_resource type="Texture2D" uid="uid://1d7eexj3bkmg" path="res://icon.svg" id="1_uwrxv"]
+
+[node name="Game" type="Node" unique_id=351752518]
+
+[node name="Player" type="Player" parent="." unique_id=841571595]
+texture = ExtResource("1_uwrxv")
+
+[node name="Camera2D" type="Camera2D" parent="Player" unique_id=1155557280]

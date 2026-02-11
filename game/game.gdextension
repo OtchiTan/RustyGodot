@@ -1,0 +1,11 @@
+[configuration]
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = "4.1"
+
+[libraries]
+linux.debug.x86_64 = "res://bin/game/linux/libgame.so"
+linux.release.x86_64 = "res://bin/game/linux/libgame.so"
+macos.debug.arm64 = "res://bin/game/macos/arm64/libgame.dylib"
+macos.release.arm64 = "res://bin/game/macos/arm64/libgame.dylib"
+windows.debug.x86_64 = "res://bin/game/windows/game.dll"
+windows.release.x86_64 = "res://bin/game/windows/game.dll"
