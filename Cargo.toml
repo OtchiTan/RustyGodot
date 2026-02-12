@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "rust/src/game",
+    "rust/src/game", "rust/src/server",
     "rust/xtask",
 ]
 resolver = "2"
