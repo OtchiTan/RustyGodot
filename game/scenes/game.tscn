@@ -8,3 +8,5 @@
 texture = ExtResource("1_uwrxv")
 
 [node name="Camera2D" type="Camera2D" parent="Player" unique_id=1155557280]
+
+[node name="NetworkManager" type="NetworkManager" parent="." unique_id=1994733463]

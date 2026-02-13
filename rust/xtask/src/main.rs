@@ -208,6 +208,9 @@ fn build_and_install(root: &Path, release: bool) -> Result<()> {
     
     let mut cmd = Command::new("cargo");
     cmd.arg("build");
+
+    cmd.arg("-p").arg("game");
+    
     if release {
         cmd.arg("--release");
     }

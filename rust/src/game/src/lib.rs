@@ -1,6 +1,9 @@
 use godot::classes::{ISprite2D, Sprite2D};
 use godot::prelude::*;
 
+mod message_type;
+mod network_manager;
+
 struct MyExtension;
 
 #[gdextension]
