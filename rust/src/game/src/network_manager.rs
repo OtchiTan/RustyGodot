@@ -20,11 +20,13 @@ pub enum ConnectionState {
 struct NetworkManager {
     socket: Option<GameSocket>,
     connection_state: ConnectionState,
+    connection_timeout: f64,
 
     base: Base<Node>,
 }
 
 #[godot_api]
+
 impl INode for NetworkManager {
     fn init(base: Base<Node>) -> Self {
         godot_print!("Network Manager initialized!");
@@ -32,27 +34,31 @@ impl INode for NetworkManager {
             socket: None,
             base,
             connection_state: ConnectionState::NotConnected,
+            connection_timeout: 0.0,
         }
     }
 
-    fn process(&mut self, _delta: f64) {
+    fn process(&mut self, delta: f64) {
         let mut buf = [0; 1500];
         if let Some(socket) = self.socket.as_mut() {
             match socket.poll(&mut buf) {
                 Some((size, _)) => {
-                    godot_print!("Connection state: {:?}", self.connection_state);
                     let buf = &mut buf[..size];
 
                     let message_header = MessageHeader::from_data(buf[0]);
                     match message_header.get_message_type() {
-                        MessageType::Helo => self.connection_state = ConnectionState::Connecting,
-                        MessageType::Hsk => self.connection_state = ConnectionState::Connected,
-                        MessageType::Ping => self.connection_state = ConnectionState::Connected,
+                        MessageType::Helo => self.set_connection_state(ConnectionState::Connecting),
+                        MessageType::Hsk => self.set_connection_state(ConnectionState::Connected),
+                        MessageType::Ping => self.set_connection_state(ConnectionState::Connected),
                         MessageType::Data => self.handle_data(message_header, &buf[1..]),
                     }
                 }
                 None => {}
             }
+        }
+        self.connection_timeout += delta;
+        if self.connection_timeout > 0.100 {
+            self.handle_timeout()
         }
     }
 
@@ -65,7 +71,12 @@ impl INode for NetworkManager {
                 let mut message: Vec<u8> = vec![];
                 self.send_message(MessageType::Helo, &mut message);
             }
-            Err(e) => godot_print!("Error connecting to server: {}", e),
+            Err(e) => godot_print!(
+                "Error conne
+
+cting to server: {}",
+                e
+            ),
         }
     }
 }
@@ -79,12 +90,32 @@ impl NetworkManager {
 
         if let Some(socket) = self.socket.as_ref() {
             match socket.send(SERVER_IP, message_content.as_slice()) {
-                Ok(size) => {
-                    godot_print!("Message Sent of size {}", size);
-                }
+                Ok(_) => {}
                 Err(e) => godot_print!("Error sending message: {}", e),
             }
         }
+    }
+
+    fn set_connection_state(&mut self, connection_state: ConnectionState) {
+        self.connection_state = connection_state;
+        self.connection_timeout = 0.0;
+    }
+
+    fn handle_timeout(&mut self) {
+        match self.connection_state {
+            ConnectionState::NotConnected => {
+                let mut message: Vec<u8> = vec![];
+                self.send_message(MessageType::Helo, &mut message);
+            }
+            ConnectionState::Connecting => {
+                let mut message: Vec<u8> = vec![];
+                self.send_message(MessageType::Hsk, &mut message);
+            }
+            ConnectionState::Connected => {}
+            ConnectionState::Spurious => {}
+        }
+
+        self.connection_timeout = 0.0;
     }
 
     fn handle_data(&self, message_header: MessageHeader, _buffer: &[u8]) {
