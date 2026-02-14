@@ -1,12 +1,18 @@
 [gd_scene format=3 uid="uid://cufci385o641h"]
 
-[ext_resource type="Texture2D" uid="uid://1d7eexj3bkmg" path="res://icon.svg" id="1_uwrxv"]
+[ext_resource type="PackedScene" uid="uid://dftrpkfy22rxb" path="res://scenes/player.tscn" id="1_uwrxv"]
 
 [node name="Game" type="Node" unique_id=351752518]
 
-[node name="Player" type="Player" parent="." unique_id=841571595]
-texture = ExtResource("1_uwrxv")
+[node name="GDNetworkManager" type="GDNetworkManager" parent="." unique_id=1210870449]
+player_scene = ExtResource("1_uwrxv")
 
-[node name="Camera2D" type="Camera2D" parent="Player" unique_id=1155557280]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1155557280]
 
-[node name="NetworkManager" type="NetworkManager" parent="." unique_id=1994733463]
+[node name="ConnectionStateLabel" type="Label" parent="Camera2D" unique_id=125015052]
+unique_name_in_owner = true
+offset_left = -540.0
+offset_top = -300.0
+offset_right = -500.0
+offset_bottom = -277.0
+text = "Test"

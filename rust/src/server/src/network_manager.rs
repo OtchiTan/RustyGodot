@@ -1,9 +1,12 @@
-﻿use crate::message_type::{MessageHeader, MessageType};
-use bevy::prelude::Component;
+﻿use crate::connected_client::ConnectedClient;
+use crate::message_header::{DataType, MessageHeader, MessageType};
+use crate::network_mapping::NetworkMapping;
+use crate::replicated_node::ReplicatedNode;
+use bevy::prelude::{Commands, Query, ResMut, Resource};
 use snl::GameSocket;
 use std::io;
 
-#[derive(Component)]
+#[derive(Resource)]
 pub struct NetworkManager {
     socket: Option<GameSocket>,
 }
@@ -11,40 +14,55 @@ pub struct NetworkManager {
 impl NetworkManager {
     pub fn new(addr: &str) -> Self {
         let socket = GameSocket::new(addr);
-        println!("UDP server started on {}", addr);
 
         match socket {
-            Ok(socket) => Self {
-                socket: Some(socket),
-            },
+            Ok(socket) => {
+                println!("Server ready on address: {}", addr);
+                Self {
+                    socket: Some(socket),
+                }
+            }
             Err(_) => Self { socket: None },
         }
     }
 
     fn handle_helo(&self, addr: String) {
-        println!("Receive Helo from {addr}");
-        let mut helo_buf = [0u8; 1500];
-        helo_buf[0] = MessageType::Helo as u8;
+        let mut helo_buf = [0u8; 1];
+        helo_buf[0] = MessageHeader::new(MessageType::Helo, DataType::None).get_data();
         if let Some(socket) = self.socket.as_ref() {
+            println!("Send helo to {}", addr);
             socket
                 .send(&addr, &helo_buf)
                 .expect("Error Message sending");
         }
     }
 
-    fn handle_hsk(&self, addr: String) {
-        println!("Receive Ksk");
-        let mut hsk_buf = [0u8; 1500];
-        hsk_buf[0] = MessageType::Hsk as u8;
+    fn handle_hsk(
+        &self,
+        addr: String,
+        mut commands: Commands,
+        mut network_mapping: ResMut<NetworkMapping>,
+    ) {
         if let Some(socket) = self.socket.as_ref() {
+            let net_id = rand::random();
+            let connected_client = commands.spawn(ConnectedClient {
+                net_id,
+                address: addr.clone(),
+            });
+
+            network_mapping.map.insert(net_id, connected_client.id());
+
+            let mut hsk_buf = [0u8; 5];
+            hsk_buf[0] = MessageHeader::new(MessageType::Hsk, DataType::None).get_data();
+            hsk_buf[1..5].copy_from_slice(&net_id.to_le_bytes());
+            println!("Send hsk to {}", addr);
             socket.send(&addr, &hsk_buf).expect("Error Message sending");
         }
     }
 
     fn handle_ping(&self, addr: String) {
-        println!("Receive Ping");
         let mut ping_buf = [0u8; 1500];
-        ping_buf[0] = MessageType::Ping as u8;
+        ping_buf[0] = MessageHeader::new(MessageType::Ping, DataType::None).get_data();
 
         if let Some(socket) = self.socket.as_ref() {
             socket
@@ -53,16 +71,46 @@ impl NetworkManager {
         }
     }
 
-    fn handle_data(&self, _addr: String, message_header: MessageHeader, _buffer: &[u8]) {
-        println!("Receive Data");
-        if message_header.is_rpc() {
-            println!("Receive RPC");
-        } else {
-            println!("Receive Replication Data");
+    fn handle_data(
+        &self,
+        _addr: String,
+        message_header: MessageHeader,
+        _buffer: &[u8],
+        mut commands: Commands,
+        clients: Query<&ConnectedClient>,
+    ) {
+        match message_header.get_data_type() {
+            DataType::Rpc => {}
+            DataType::Replication => {}
+            DataType::Spawn => {
+                let replicated_node = ReplicatedNode {
+                    net_id: rand::random(),
+                    x: clients.count() as f32 * 25.0,
+                    y: 0.0,
+                };
+
+                let mut buffer = [0u8; 13];
+                buffer[0] = MessageHeader::new(MessageType::Data, DataType::Spawn).get_data();
+                buffer[1..5].copy_from_slice(&replicated_node.net_id.to_le_bytes());
+                buffer[5..9].copy_from_slice(&replicated_node.x.to_le_bytes());
+                buffer[9..13].copy_from_slice(&replicated_node.y.to_le_bytes());
+
+                commands.spawn(replicated_node);
+
+                for connected_client in clients.iter() {
+                    self.send_data(&connected_client.address, &buffer);
+                }
+            }
+            DataType::None => {}
         }
     }
 
-    pub fn poll(&self) -> io::Result<()> {
+    pub fn poll(
+        &self,
+        commands: Commands,
+        network_mapping: ResMut<NetworkMapping>,
+        clients: Query<&ConnectedClient>,
+    ) -> io::Result<()> {
         let mut buf = [0; 1500];
 
         if let Some(socket) = self.socket.as_ref() {
@@ -71,18 +119,34 @@ impl NetworkManager {
                     let buf = &mut buf[..size];
 
                     let message_header = MessageHeader::from_data(buf[0]);
+
+                    println!(
+                        "Received message : {:?} | {:?}",
+                        message_header.get_message_type(),
+                        message_header.get_data_type()
+                    );
                     match message_header.get_message_type() {
-                        MessageType::Helo => Self::handle_helo(self, socket_addr),
-                        MessageType::Hsk => Self::handle_hsk(self, socket_addr),
-                        MessageType::Ping => Self::handle_ping(self, socket_addr),
-                        MessageType::Data => {
-                            Self::handle_data(self, socket_addr, message_header, &buf[1..])
-                        }
+                        MessageType::Helo => self.handle_helo(socket_addr),
+                        MessageType::Hsk => self.handle_hsk(socket_addr, commands, network_mapping),
+                        MessageType::Ping => self.handle_ping(socket_addr),
+                        MessageType::Data => self.handle_data(
+                            socket_addr,
+                            message_header,
+                            &buf[1..],
+                            commands,
+                            clients,
+                        ),
                     }
                 }
                 None => {}
             }
         }
         Ok(())
+    }
+
+    pub fn send_data(&self, addr: &String, buffer: &[u8]) {
+        if let Some(socket) = self.socket.as_ref() {
+            socket.send(&addr, &buffer).expect("Error Message sending");
+        }
     }
 }
