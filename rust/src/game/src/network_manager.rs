@@ -1,4 +1,4 @@
-﻿use crate::message_type::MessageType;
+﻿use crate::message_type::{MessageHeader, MessageType};
 use godot::classes::{INode, Node};
 use godot::global::godot_print;
 use godot::obj::Base;
@@ -7,30 +7,57 @@ use snl::GameSocket;
 
 const SERVER_IP: &str = "127.0.0.1:3630";
 
+#[derive(Debug)]
+pub enum ConnectionState {
+    NotConnected,
+    Connecting,
+    Connected,
+    Spurious,
+}
+
 #[derive(GodotClass)]
 #[class(base=Node)]
 struct NetworkManager {
     socket: Option<GameSocket>,
+    connection_state: ConnectionState,
 
-    base: Base<Node>
+    base: Base<Node>,
 }
 
 #[godot_api]
 impl INode for NetworkManager {
     fn init(base: Base<Node>) -> Self {
         godot_print!("Network Manager initialized!");
-        Self { socket: None, base }
+        Self {
+            socket: None,
+            base,
+            connection_state: ConnectionState::NotConnected,
+        }
     }
 
     fn process(&mut self, _delta: f64) {
-        let buffer = &mut [];
+        let mut buf = [0; 1500];
         if let Some(socket) = self.socket.as_mut() {
-            socket.poll(buffer);
+            match socket.poll(&mut buf) {
+                Some((size, _)) => {
+                    godot_print!("Connection state: {:?}", self.connection_state);
+                    let buf = &mut buf[..size];
+
+                    let message_header = MessageHeader::from_data(buf[0]);
+                    match message_header.get_message_type() {
+                        MessageType::Helo => self.connection_state = ConnectionState::Connecting,
+                        MessageType::Hsk => self.connection_state = ConnectionState::Connected,
+                        MessageType::Ping => self.connection_state = ConnectionState::Connected,
+                        MessageType::Data => self.handle_data(message_header, &buf[1..]),
+                    }
+                }
+                None => {}
+            }
         }
     }
 
     fn ready(&mut self) {
-        let socket = GameSocket::new("127.0.0.1:3631");
+        let socket = GameSocket::new("127.0.0.1:0");
 
         match socket {
             Ok(socket) => {
@@ -57,6 +84,15 @@ impl NetworkManager {
                 }
                 Err(e) => godot_print!("Error sending message: {}", e),
             }
+        }
+    }
+
+    fn handle_data(&self, message_header: MessageHeader, _buffer: &[u8]) {
+        println!("Receive Data");
+        if message_header.is_rpc() {
+            println!("Receive RPC");
+        } else {
+            println!("Receive Replication Data");
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿use crate::message_type::MessageType;
+﻿use crate::message_type::{MessageHeader, MessageType};
 use snl::GameSocket;
 use std::io;
 
@@ -18,7 +18,7 @@ impl NetworkManager {
     }
 
     fn handle_helo(&self, addr: String) {
-        println!("Receive Helo");
+        println!("Receive Helo from {addr}");
         let mut helo_buf = [0u8; 1500];
         helo_buf[0] = MessageType::Helo as u8;
         self.socket
@@ -44,44 +44,28 @@ impl NetworkManager {
             .expect("Error Message sending");
     }
 
-    fn handle_data(&self, addr: String, buffer: &[u8]) {
+    fn handle_data(&self, _addr: String, message_header: MessageHeader, _buffer: &[u8]) {
         println!("Receive Data");
-        match str::from_utf8(buffer) {
-            Ok(s) => {
-                println!("{}", s);
-            }
-            Err(e) => {
-                eprintln!("Invalid UTF-8 sequence: {}", e);
-            }
+        if message_header.is_rpc() {
+            println!("Receive RPC");
+        } else {
+            println!("Receive Replication Data");
         }
-
-        let mut response_data = [0u8; 1500];
-        response_data[0] = MessageType::Data as u8;
-        self.socket
-            .send(&addr, &response_data)
-            .expect("Error Message sending");
     }
 
     pub fn poll(&self) -> io::Result<()> {
-        let mut buf = [0u8; 1500];
-
-        let buffer = &mut [];
-        match self.socket.poll(buffer) {
+        let mut buf = [0; 1500];
+        match self.socket.poll(&mut buf) {
             Some((size, socket_addr)) => {
-                println!("Received message");
-
                 let buf = &mut buf[..size];
 
-                let parsed_message = MessageType::try_from(buf[0]);
-                match parsed_message {
-                    Ok(v) => match v {
-                        MessageType::Helo => Self::handle_helo(self, socket_addr),
-                        MessageType::Hsk => Self::handle_hsk(self, socket_addr),
-                        MessageType::Ping => Self::handle_ping(self, socket_addr),
-                        MessageType::Data => Self::handle_data(self, socket_addr, buf),
-                    },
-                    Err(err) => {
-                        println!("Error: {:?}", err);
+                let message_header = MessageHeader::from_data(buf[0]);
+                match message_header.get_message_type() {
+                    MessageType::Helo => Self::handle_helo(self, socket_addr),
+                    MessageType::Hsk => Self::handle_hsk(self, socket_addr),
+                    MessageType::Ping => Self::handle_ping(self, socket_addr),
+                    MessageType::Data => {
+                        Self::handle_data(self, socket_addr, message_header, &buf[1..])
                     }
                 }
             }
