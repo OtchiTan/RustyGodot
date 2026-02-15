@@ -4,6 +4,7 @@ pub enum MessageType {
     Hsk,
     Ping,
     Data,
+    Bye
 }
 
 #[derive(Debug)]

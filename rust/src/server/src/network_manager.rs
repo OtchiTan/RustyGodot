@@ -2,7 +2,7 @@
 use crate::message_header::{DataType, MessageHeader, MessageType};
 use crate::network_mapping::NetworkMapping;
 use crate::replicated_node::ReplicatedNode;
-use bevy::prelude::{Commands, Query, ResMut, Resource};
+use bevy::prelude::{Commands, ResMut, Resource};
 use snl::GameSocket;
 use std::io;
 
@@ -52,6 +52,15 @@ impl NetworkManager {
 
             network_mapping.map.insert(net_id, connected_client.id());
 
+            let replicated_node = ReplicatedNode {
+                net_id: rand::random(),
+                class_id: 0,
+                x: 0.0,
+                y: 0.0,
+            };
+
+            commands.spawn(replicated_node);
+
             let mut hsk_buf = [0u8; 5];
             hsk_buf[0] = MessageHeader::new(MessageType::Hsk, DataType::None).get_data();
             hsk_buf[1..5].copy_from_slice(&net_id.to_le_bytes());
@@ -76,31 +85,11 @@ impl NetworkManager {
         _addr: String,
         message_header: MessageHeader,
         _buffer: &[u8],
-        mut commands: Commands,
-        clients: Query<&ConnectedClient>,
     ) {
         match message_header.get_data_type() {
             DataType::Rpc => {}
             DataType::Replication => {}
-            DataType::Spawn => {
-                let replicated_node = ReplicatedNode {
-                    net_id: rand::random(),
-                    x: clients.count() as f32 * 25.0,
-                    y: 0.0,
-                };
-
-                let mut buffer = [0u8; 13];
-                buffer[0] = MessageHeader::new(MessageType::Data, DataType::Spawn).get_data();
-                buffer[1..5].copy_from_slice(&replicated_node.net_id.to_le_bytes());
-                buffer[5..9].copy_from_slice(&replicated_node.x.to_le_bytes());
-                buffer[9..13].copy_from_slice(&replicated_node.y.to_le_bytes());
-
-                commands.spawn(replicated_node);
-
-                for connected_client in clients.iter() {
-                    self.send_data(&connected_client.address, &buffer);
-                }
-            }
+            DataType::Spawn => {}
             DataType::None => {}
         }
     }
@@ -109,7 +98,6 @@ impl NetworkManager {
         &self,
         commands: Commands,
         network_mapping: ResMut<NetworkMapping>,
-        clients: Query<&ConnectedClient>,
     ) -> io::Result<()> {
         let mut buf = [0; 1500];
 
@@ -132,10 +120,9 @@ impl NetworkManager {
                         MessageType::Data => self.handle_data(
                             socket_addr,
                             message_header,
-                            &buf[1..],
-                            commands,
-                            clients,
+                            &buf[1..]
                         ),
+                        MessageType::Bye => {}
                     }
                 }
                 None => {}
