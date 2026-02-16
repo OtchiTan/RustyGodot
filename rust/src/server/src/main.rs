@@ -3,15 +3,17 @@ mod message_header;
 mod network_manager;
 mod network_mapping;
 mod replicated_node;
+mod serializer;
 
 use crate::connected_client::ConnectedClient;
 use crate::message_header::{DataType, MessageHeader, MessageType};
 use crate::network_manager::NetworkManager;
 use crate::network_mapping::NetworkMapping;
 use crate::replicated_node::ReplicatedNode;
+use crate::serializer::Serializer;
 use bevy::MinimalPlugins;
 use bevy::app::{App, FixedUpdate, Update};
-use bevy::prelude::{Commands, Query, Res, ResMut};
+use bevy::prelude::*;
 use bevy::time::{Fixed, Time};
 use std::collections::HashMap;
 
@@ -46,18 +48,17 @@ fn update_replication(
     clients: Query<&ConnectedClient>,
     replicated_nodes: Query<&ReplicatedNode>,
 ) {
-    println!("NetworkManager Updating : {}", replicated_nodes.count());
     for replicated_node in replicated_nodes.iter() {
-        let mut buffer = [0u8; 17];
         let message_header = MessageHeader::new(MessageType::Data, DataType::Replication);
-        buffer[0] = message_header.get_data();
-        buffer[1..5].copy_from_slice(&replicated_node.net_id.to_le_bytes());
-        buffer[5..9].copy_from_slice(&replicated_node.class_id.to_le_bytes());
-        buffer[9..13].copy_from_slice(&replicated_node.x.to_le_bytes());
-        buffer[13..17].copy_from_slice(&replicated_node.y.to_le_bytes());
+        let mut serializer = Serializer::new(vec![]);
+        let _ = &mut serializer << message_header.get_data();
+        let _ = &mut serializer << replicated_node.net_id;
+        let _ = &mut serializer << replicated_node.class_id;
+        let _ = &mut serializer << replicated_node.x;
+        let _ = &mut serializer << replicated_node.y;
 
         for client in clients.iter() {
-            network_manager.send_data(&client.address, &buffer);
+            network_manager.send_data(&client.address, serializer.get_data());
         }
     }
 }

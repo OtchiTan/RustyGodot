@@ -4,7 +4,7 @@ pub enum MessageType {
     Hsk,
     Ping,
     Data,
-    Bye
+    Bye,
 }
 
 #[derive(Debug)]
@@ -12,7 +12,6 @@ pub enum DataType {
     None,
     Rpc,
     Replication,
-    Spawn,
 }
 
 pub struct MessageHeader {
@@ -69,7 +68,6 @@ impl TryFrom<u8> for DataType {
             0 => Ok(DataType::None),
             1 => Ok(DataType::Rpc),
             2 => Ok(DataType::Replication),
-            3 => Ok(DataType::Spawn),
             _ => Err(EnumError),
         }
     }

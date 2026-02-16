@@ -1,9 +1,11 @@
 ﻿use crate::message_header::{DataType, MessageHeader, MessageType};
-use godot::builtin::Vector2;
-use godot::classes::{INode, Label, Node, PackedScene};
+use crate::player::GDPlayer;
+use crate::serializer::Serializer;
+use godot::builtin::{Array, Vector2};
+use godot::classes::{INode, Label, Node, Node2D, PackedScene};
 use godot::global::godot_print;
 use godot::obj::{Base, Gd, WithBaseField};
-use godot::prelude::{godot_api, GodotClass, Node2D};
+use godot::prelude::{godot_api, GodotClass};
 use snl::GameSocket;
 use std::collections::HashMap;
 
@@ -30,20 +32,20 @@ impl ConnectionState {
 
 #[derive(GodotClass)]
 #[class(base=Node)]
-struct GDNetworkManager {
+pub struct GDNetworkManager {
     socket: Option<GameSocket>,
     connection_state: ConnectionState,
     connection_timeout: f64,
     ping_sent: u32,
 
+    #[export]
+    linking_context: Array<Gd<PackedScene>>,
     client_id: u32,
-    replicated_nodes: HashMap<u32, Gd<Node2D>>,
+    replicated_nodes: HashMap<u32, Gd<Node>>,
 
     base: Base<Node>,
-    #[export]
-    player_scene: Option<Gd<PackedScene>>,
 
-    player: Option<Gd<Node>>,
+    player: Option<Gd<GDPlayer>>,
 }
 
 #[godot_api]
@@ -57,8 +59,8 @@ impl INode for GDNetworkManager {
             connection_state: ConnectionState::NotConnected,
             connection_timeout: 0.0,
             ping_sent: 0,
+            linking_context: Array::new(),
             client_id: 0,
-            player_scene: None,
             player: None,
             replicated_nodes: HashMap::new(),
         }
@@ -72,12 +74,6 @@ impl INode for GDNetworkManager {
                     let buf = &mut buf[..size];
 
                     let message_header = MessageHeader::from_data(buf[0]);
-
-                    godot_print!(
-                        "Received message : {:?} | {:?}",
-                        message_header.get_message_type(),
-                        message_header.get_data_type()
-                    );
 
                     match message_header.get_message_type() {
                         MessageType::Helo => self.set_connection_state(ConnectionState::Connecting),
@@ -105,6 +101,10 @@ impl INode for GDNetworkManager {
         }
     }
 
+    fn exit_tree(&mut self) {
+        self.disconnect_socket(true);
+    }
+
     fn ready(&mut self) {
         let socket = GameSocket::new("127.0.0.1:0");
 
@@ -116,14 +116,11 @@ impl INode for GDNetworkManager {
             Err(e) => godot_print!("Error connecting to server: {}", e),
         }
     }
-
-    fn exit_tree(&mut self) {
-        self.disconnect_socket(true);
-    }
 }
 
+#[godot_api]
 impl GDNetworkManager {
-    fn send_message(&self, message_type: MessageType, buffer: &mut Vec<u8>) {
+    pub fn send_message(&self, message_type: MessageType, buffer: &mut Vec<u8>) {
         let mut message_content: Vec<u8> = vec![];
         message_content.insert(
             0,
@@ -161,7 +158,7 @@ impl GDNetworkManager {
             }
             ConnectionState::Connected => self.set_connection_state(ConnectionState::Spurious),
             ConnectionState::Spurious => {
-                if (self.ping_sent < 3) {
+                if self.ping_sent < 3 {
                     let mut message: Vec<u8> = vec![];
                     self.send_message(MessageType::Ping, &mut message);
                     self.ping_sent += 1;
@@ -184,63 +181,78 @@ impl GDNetworkManager {
     }
 
     fn handle_data(&mut self, message_header: MessageHeader, buffer: &[u8]) {
-        godot_print!("Receive Data");
         self.connection_timeout = 0.0;
 
         match message_header.get_data_type() {
             DataType::None => {}
             DataType::Rpc => {}
             DataType::Replication => {
-                let net_id =
-                    u32::from_le_bytes(buffer[0..4].try_into().expect("Slice de mauvaise taille"));
-                //let class_id =
-                //    u32::from_le_bytes(buffer[4..8].try_into().expect("Slice de mauvaise taille"));
-                //let x =
-                //    f32::from_le_bytes(buffer[8..12].try_into().expect("Slice de mauvaise taille"));
-                //let y = f32::from_le_bytes(
-                //    buffer[12..16].try_into().expect("Slice de mauvaise taille"),
-                //);
+                let mut serializer = Serializer::new(buffer.to_vec());
+                let mut net_id: u32 = 0;
+                let _ = &mut serializer >> &mut net_id;
 
-                if let Some(replicated_node) = self.replicated_nodes.get(&net_id) {
-                    //replicated_node.set_position(Vector2::new(x, y));
+                if let Some(replicated_node) = self.get_node_by_id(net_id) {
+                    if let Ok(mut _replicated_node) = replicated_node.try_cast::<Node2D>() {
+                        let mut class_id: u32 = 0;
+                        let mut x: f32 = 0.0;
+                        let mut y: f32 = 0.0;
+                        let _ = &mut serializer >> &mut class_id;
+                        let _ = &mut serializer >> &mut x;
+                        let _ = &mut serializer >> &mut y;
+
+                        //replicated_node.set_position(Vector2::new(x, y));
+                    }
                 } else {
-                    self.spawn_player_scene(buffer);
+                    self.spawn_replicated_node(buffer);
                 }
-            }
-            DataType::Spawn => {
-                self.spawn_player_scene(buffer);
             }
         }
     }
 
-    fn spawn_player_scene(&mut self, buffer: &[u8]) {
-        let Some(scene) = &self.player_scene else {
-            godot_print!("Enemy scene not assigned!");
+    pub fn get_node_by_id(&self, id: u32) -> Option<Gd<Node>> {
+        self.replicated_nodes.get(&id).cloned()
+    }
+
+    fn spawn_replicated_node(&mut self, buffer: &[u8]) {
+        let mut serializer = Serializer::new(buffer.to_vec());
+        let mut net_id: u32 = 0;
+        let mut class_id: u32 = 0;
+        let mut x: f32 = 0.0;
+        let mut y: f32 = 0.0;
+        let _ = &mut serializer >> &mut  net_id;
+        let _ = &mut serializer >> &mut  class_id;
+        let _ = &mut serializer >> &mut  x;
+        let _ = &mut serializer >> &mut  y;
+
+        let Some(scene) = &self.linking_context.get(class_id as usize) else {
+            godot_print!("Scene not found");
             return;
         };
 
-        let player_node = scene
-            .clone()
-            .instantiate()
-            .expect("Failed to instantiate scene");
+        let player_node = scene.instantiate_as::<Node>();
 
-        let net_id = u32::from_le_bytes(buffer[0..4].try_into().expect("Slice de mauvaise taille"));
-        let x = f32::from_le_bytes(buffer[8..12].try_into().expect("Slice de mauvaise taille"));
-        let y = f32::from_le_bytes(buffer[12..16].try_into().expect("Slice de mauvaise taille"));
+        self.base_mut().add_child(&player_node);
 
-        self.base()
-            .get_tree()
-            .get_root()
-            .unwrap()
-            .add_child(&player_node);
-
-        if let Ok(mut node_2d) = player_node.clone().try_cast::<Node2D>() {
+        if let Ok(player_node) = player_node.clone().try_cast::<Node2D>() {
             let position = Vector2::new(x, y);
             godot_print!("Position of scene: {}", position);
-            node_2d.set_position(position);
-            self.replicated_nodes.insert(net_id, node_2d);
+            player_node.clone().set_position(position);
+            if let Ok(player_node) = player_node.get_child(0).unwrap().try_cast::<GDPlayer>() {
+                player_node.clone().bind_mut().net_id = net_id;
+                self.player = Some(player_node);
+            }
         }
 
-        self.player = Some(player_node);
+        self.replicated_nodes.insert(net_id, player_node.clone());
+    }
+
+    #[func]
+    pub fn replicate_new_movement(&mut self, node: Gd<GDPlayer>, new_position: Vector2) {
+        let mut serializer = Serializer::new(vec![]);
+        let _ = &mut serializer << node.bind().net_id;
+        let _ = &mut serializer << 0;
+        let _ = &mut serializer << new_position.x;
+        let _ = &mut serializer << new_position.y;
+        self.send_message(MessageType::Data, &mut serializer.get_data().to_vec());
     }
 }

@@ -2,6 +2,7 @@
 use crate::message_header::{DataType, MessageHeader, MessageType};
 use crate::network_mapping::NetworkMapping;
 use crate::replicated_node::ReplicatedNode;
+use crate::serializer::Serializer;
 use bevy::prelude::{Commands, ResMut, Resource};
 use snl::GameSocket;
 use std::io;
@@ -27,12 +28,12 @@ impl NetworkManager {
     }
 
     fn handle_helo(&self, addr: String) {
-        let mut helo_buf = [0u8; 1];
-        helo_buf[0] = MessageHeader::new(MessageType::Helo, DataType::None).get_data();
+        let mut serializer = Serializer::new(vec![]);
+        let _ = &mut serializer << MessageHeader::new(MessageType::Helo, DataType::None).get_data();
         if let Some(socket) = self.socket.as_ref() {
             println!("Send helo to {}", addr);
             socket
-                .send(&addr, &helo_buf)
+                .send(&addr, serializer.get_data())
                 .expect("Error Message sending");
         }
     }
@@ -55,27 +56,30 @@ impl NetworkManager {
             let replicated_node = ReplicatedNode {
                 net_id: rand::random(),
                 class_id: 0,
-                x: 0.0,
+                x: rand::random_range(-100.0..100.0),
                 y: 0.0,
             };
 
             commands.spawn(replicated_node);
 
-            let mut hsk_buf = [0u8; 5];
-            hsk_buf[0] = MessageHeader::new(MessageType::Hsk, DataType::None).get_data();
-            hsk_buf[1..5].copy_from_slice(&net_id.to_le_bytes());
+            let mut serializer = Serializer::new(vec![]);
+            let _ =
+                &mut serializer << MessageHeader::new(MessageType::Hsk, DataType::None).get_data();
+            let _ = &mut serializer << net_id;
             println!("Send hsk to {}", addr);
-            socket.send(&addr, &hsk_buf).expect("Error Message sending");
+            socket
+                .send(&addr, serializer.get_data())
+                .expect("Error Message sending");
         }
     }
 
     fn handle_ping(&self, addr: String) {
-        let mut ping_buf = [0u8; 1500];
-        ping_buf[0] = MessageHeader::new(MessageType::Ping, DataType::None).get_data();
+        let mut serializer = Serializer::new(vec![]);
+        let _ = &mut serializer << MessageHeader::new(MessageType::Ping, DataType::None).get_data();
 
         if let Some(socket) = self.socket.as_ref() {
             socket
-                .send(&addr, &ping_buf)
+                .send(&addr, serializer.get_data())
                 .expect("Error Message sending");
         }
     }
@@ -84,12 +88,24 @@ impl NetworkManager {
         &self,
         _addr: String,
         message_header: MessageHeader,
-        _buffer: &[u8],
+        buffer: &[u8],
+        network_mapping: ResMut<NetworkMapping>,
     ) {
         match message_header.get_data_type() {
-            DataType::Rpc => {}
+            DataType::Rpc => {
+                let mut serializer = Serializer::new(buffer.to_vec());
+                let net_id: u32 = 0;
+                let class_id: usize = 0;
+                let x: f32 = 0.0;
+                let y: f32 = 0.0;
+                let _ = &mut serializer << net_id;
+                let _ = &mut serializer << class_id;
+                let _ = &mut serializer << x;
+                let _ = &mut serializer << y;
+
+                if let Some(_entity) = network_mapping.map.get(&net_id) {}
+            }
             DataType::Replication => {}
-            DataType::Spawn => {}
             DataType::None => {}
         }
     }
@@ -107,12 +123,6 @@ impl NetworkManager {
                     let buf = &mut buf[..size];
 
                     let message_header = MessageHeader::from_data(buf[0]);
-
-                    println!(
-                        "Received message : {:?} | {:?}",
-                        message_header.get_message_type(),
-                        message_header.get_data_type()
-                    );
                     match message_header.get_message_type() {
                         MessageType::Helo => self.handle_helo(socket_addr),
                         MessageType::Hsk => self.handle_hsk(socket_addr, commands, network_mapping),
@@ -120,7 +130,8 @@ impl NetworkManager {
                         MessageType::Data => self.handle_data(
                             socket_addr,
                             message_header,
-                            &buf[1..]
+                            &buf[1..],
+                            network_mapping,
                         ),
                         MessageType::Bye => {}
                     }
