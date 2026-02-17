@@ -2,7 +2,6 @@
 use std::collections::HashMap;
 
 #[derive(Resource)]
-pub struct NetworkMapping {
-    // Mapping NetworkID -> Entity Bevy
+pub struct ReplicationManager {
     pub map: HashMap<u32, Entity>,
 }

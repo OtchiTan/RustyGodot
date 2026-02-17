@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/rust/src/game/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/xtask/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/src/server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rust/src/common/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.godot_bin" />
       <excludeFolder url="file://$MODULE_DIR$/builds" />
       <excludeFolder url="file://$MODULE_DIR$/game/.godot" />

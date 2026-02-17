@@ -1,6 +1,6 @@
-﻿use crate::message_header::{DataType, MessageHeader, MessageType};
+﻿use common::message_header::{DataType, MessageHeader, MessageType};
 use crate::player::GDPlayer;
-use crate::serializer::Serializer;
+use common::serializer::Serializer;
 use godot::builtin::{Array, Vector2};
 use godot::classes::{INode, Label, Node, Node2D, PackedScene};
 use godot::global::godot_print;
@@ -219,10 +219,10 @@ impl GDNetworkManager {
         let mut class_id: u32 = 0;
         let mut x: f32 = 0.0;
         let mut y: f32 = 0.0;
-        let _ = &mut serializer >> &mut  net_id;
-        let _ = &mut serializer >> &mut  class_id;
-        let _ = &mut serializer >> &mut  x;
-        let _ = &mut serializer >> &mut  y;
+        let _ = &mut serializer >> &mut net_id;
+        let _ = &mut serializer >> &mut class_id;
+        let _ = &mut serializer >> &mut x;
+        let _ = &mut serializer >> &mut y;
 
         let Some(scene) = &self.linking_context.get(class_id as usize) else {
             godot_print!("Scene not found");

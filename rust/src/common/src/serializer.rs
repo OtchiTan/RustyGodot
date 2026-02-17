@@ -1,4 +1,5 @@
-﻿use num_traits::ToBytes;
+﻿
+use num_traits::ToBytes;
 use std::ops::{Shl, Shr};
 
 pub struct Serializer {
@@ -35,6 +36,8 @@ macro_rules! impl_shr {
                     let size = std::mem::size_of::<$t>();
                     let bytes = &self.buffer[self.cursor..self.cursor + size];
 
+                    // Ici, le compilateur sait exactement quel est le type,
+                    // donc try_into() fonctionne sans gymnastique générique.
                     *rhs = <$t>::from_le_bytes(bytes.try_into().unwrap());
 
                     self.cursor += size;

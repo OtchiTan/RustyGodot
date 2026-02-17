@@ -1,20 +1,18 @@
-mod connected_client;
-mod message_header;
-mod network_manager;
-mod network_mapping;
-mod replicated_node;
-mod serializer;
+mod network;
+mod replication;
+mod rpc;
 
-use crate::connected_client::ConnectedClient;
-use crate::message_header::{DataType, MessageHeader, MessageType};
-use crate::network_manager::NetworkManager;
-use crate::network_mapping::NetworkMapping;
-use crate::replicated_node::ReplicatedNode;
-use crate::serializer::Serializer;
+use crate::replication::replicated_node::ReplicatedNode;
+use crate::replication::replication_manager::ReplicationManager;
+use crate::rpc::rpc_manager::RpcManager;
 use bevy::MinimalPlugins;
 use bevy::app::{App, FixedUpdate, Update};
 use bevy::prelude::*;
 use bevy::time::{Fixed, Time};
+use common::message_header::{DataType, MessageHeader, MessageType};
+use common::serializer::Serializer;
+use network::connected_client::ConnectedClient;
+use network::network_manager::NetworkManager;
 use std::collections::HashMap;
 
 const SERVER_IP: &str = "127.0.0.1:3630";
@@ -23,7 +21,8 @@ fn main() {
     App::new()
         .add_plugins(MinimalPlugins)
         .insert_resource(NetworkManager::new(SERVER_IP))
-        .insert_resource(NetworkMapping {
+        .insert_resource(RpcManager {})
+        .insert_resource(ReplicationManager {
             map: HashMap::new(),
         })
         .insert_resource(Time::<Fixed>::from_hz(30.0))
@@ -35,11 +34,19 @@ fn main() {
 fn poll(
     commands: Commands,
     network_manager: Res<NetworkManager>,
-    network_mapping: ResMut<NetworkMapping>,
+    mut replication_manager: ResMut<ReplicationManager>,
+    rpc_manager: ResMut<RpcManager>,
 ) {
-    match network_manager.poll(commands, network_mapping) {
-        Ok(_) => {}
-        Err(e) => println!("NetworkManager Error: {}", e),
+    match network_manager.poll(commands, replication_manager.as_mut()) {
+        Some((client_addr, message_header, buffer)) => {
+            rpc_manager.handle_rpc(
+                client_addr,
+                message_header,
+                buffer,
+                replication_manager.as_ref(),
+            );
+        }
+        None => {}
     }
 }
 
