@@ -204,11 +204,9 @@ animations = [{
 [sub_resource type="CircleShape2D" id="CircleShape2D_3vyb7"]
 radius = 5.0
 
-[node name="Player" type="CharacterBody2D" unique_id=1911507524]
+[node name="Player" type="GDPlayer" unique_id=620504706]
 collision_layer = 2
 script = ExtResource("1_g2els")
-
-[node name="GDPlayer" type="GDPlayer" parent="." unique_id=230423307]
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2015160754]
 z_index = 5

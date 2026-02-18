@@ -4,8 +4,8 @@ extends CharacterBody2D
 const SPEED = 130.0
 const JUMP_VELOCITY = -300.0
 
-@onready var gd_player: GDPlayer = $GDPlayer
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
+
 var gd_network_manager: GDNetworkManager
 
 func _jump() -> void :
@@ -16,6 +16,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	# Add the gravity.
+	
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
@@ -48,4 +49,4 @@ func _physics_process(delta: float) -> void:
 	
 	move_and_slide()
 	
-	gd_network_manager.replicate_new_movement(gd_player, get_transform().get_origin())
+	gd_network_manager.replicate_node(self)

@@ -1,6 +1,6 @@
 ﻿use crate::network::connected_client::ConnectedClient;
 use crate::replication::replicated_node::ReplicatedNode;
-use crate::replication::replication_manager::ReplicationManager;
+use crate::replication::replication_manager::{ClientEntityLink, ReplicationManager};
 use bevy::prelude::{Commands, Resource};
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::serializer::Serializer;
@@ -45,23 +45,32 @@ impl NetworkManager {
     ) {
         if let Some(socket) = self.socket.as_ref() {
             let net_id = rand::random();
-            let connected_client = commands.spawn(ConnectedClient {
-                _net_id: net_id,
-                address: addr.clone(),
-            });
+            let connected_client = commands
+                .spawn(ConnectedClient {
+                    _net_id: net_id,
+                    address: addr.clone(),
+                })
+                .id();
 
-            replication_manager
-                .map
-                .insert(net_id, connected_client.id());
-
-            let replicated_node = ReplicatedNode {
-                net_id: rand::random(),
-                class_id: 0,
+            let player_net_id = rand::random();
+            let player = ReplicatedNode {
+                net_id: player_net_id,
+                type_id: 0,
                 x: rand::random_range(-100.0..100.0),
                 y: 0.0,
             };
 
-            commands.spawn(replicated_node);
+            let player_entity = commands.spawn(player).id();
+
+            let mut client_entity = ClientEntityLink::new(connected_client);
+
+            client_entity
+                .possessed_entity
+                .insert(player_net_id, player_entity);
+
+            replication_manager
+                .client_entities
+                .insert(net_id, client_entity);
 
             let mut serializer = Serializer::new(vec![]);
             let _ =
@@ -82,6 +91,33 @@ impl NetworkManager {
             socket
                 .send(&addr, serializer.get_data())
                 .expect("Error Message sending");
+        }
+    }
+
+    fn handle_bye(
+        &self,
+        buffer: Vec<u8>,
+        mut commands: Commands,
+        replication_manager: &mut ReplicationManager,
+    ) {
+        println!("{:?}", buffer);
+        let mut deserializer = Serializer::new(buffer.clone());
+        let mut bb: u32 = 0;
+
+        let _ = &mut deserializer >> &mut bb;
+
+        println!("{bb}");
+
+        let mut serializer = Serializer::new(buffer);
+        let mut net_id: u32 = 0;
+        let _ = &mut serializer >> &mut net_id;
+        println!("Net id : {net_id}");
+
+        if let Some(client) = replication_manager.client_entities.get(&net_id) {
+            for entity in client.possessed_entity.values() {
+                commands.entity(*entity).despawn();
+            }
+            commands.entity(client.client).despawn();
         }
     }
 
@@ -112,7 +148,10 @@ impl NetworkManager {
                             None
                         }
                         MessageType::Data => Some((socket_addr, message_header, buf[1..].to_vec())),
-                        MessageType::Bye => None,
+                        MessageType::Bye => {
+                            self.handle_bye(buf[1..].to_vec(), commands, replication_manager);
+                            None
+                        }
                     }
                 }
                 None => None,

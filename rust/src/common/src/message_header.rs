@@ -55,6 +55,7 @@ impl TryFrom<u8> for MessageType {
             1 => Ok(MessageType::Hsk),
             2 => Ok(MessageType::Ping),
             3 => Ok(MessageType::Data),
+            4 => Ok(MessageType::Bye),
             _ => Err(EnumError),
         }
     }
