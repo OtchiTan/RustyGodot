@@ -44,10 +44,10 @@ impl NetworkManager {
         replication_manager: &mut ReplicationManager,
     ) {
         if let Some(socket) = self.socket.as_ref() {
-            let net_id = rand::random();
+            let client_net_id = rand::random();
             let connected_client = commands
                 .spawn(ConnectedClient {
-                    _net_id: net_id,
+                    _net_id: client_net_id,
                     address: addr.clone(),
                 })
                 .id();
@@ -56,6 +56,7 @@ impl NetworkManager {
             let player = ReplicatedNode {
                 net_id: player_net_id,
                 type_id: 0,
+                owner_id: client_net_id,
                 x: rand::random_range(-100.0..100.0),
                 y: 0.0,
             };
@@ -70,12 +71,12 @@ impl NetworkManager {
 
             replication_manager
                 .client_entities
-                .insert(net_id, client_entity);
+                .insert(client_net_id, client_entity);
 
             let mut serializer = Serializer::new(vec![]);
             let _ =
                 &mut serializer << MessageHeader::new(MessageType::Hsk, DataType::None).get_data();
-            let _ = &mut serializer << net_id;
+            let _ = &mut serializer << client_net_id;
             println!("Send hsk to {}", addr);
             socket
                 .send(&addr, serializer.get_data())

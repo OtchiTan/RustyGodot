@@ -1,7 +1,6 @@
 ﻿use crate::linking_context::LinkingContext;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::serializer::Serializer;
-use godot::classes::notify::NodeNotification;
 use godot::classes::{INode, Label, Node};
 use godot::global::godot_print;
 use godot::obj::{Base, Gd, WithBaseField};
@@ -39,7 +38,7 @@ pub struct GDNetworkManager {
     ping_sent: u32,
 
     linking_context: LinkingContext,
-    client_id: u32,
+    pub client_id: u32,
     replicated_nodes: HashMap<Gd<Node>, u32>,
     replicated_nodes_id: HashMap<u32, Gd<Node>>,
 

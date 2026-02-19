@@ -18,7 +18,7 @@ impl Plugin for ReplicationPlugin {
         app.insert_resource(ReplicationManager {
             client_entities: HashMap::new(),
         })
-        .insert_resource(Time::<Fixed>::from_hz(1.0))
+        .insert_resource(Time::<Fixed>::from_hz(30.0))
         .add_systems(FixedUpdate, update_replication);
     }
 }
@@ -36,6 +36,7 @@ fn update_replication(
         let _ = &mut serializer << replicated_node.type_id;
         let _ = &mut serializer << replicated_node.x;
         let _ = &mut serializer << replicated_node.y;
+        let _ = &mut serializer << replicated_node.owner_id;
         for client in clients.iter() {
             network_manager.send_data(&client.address, serializer.get_data());
         }
