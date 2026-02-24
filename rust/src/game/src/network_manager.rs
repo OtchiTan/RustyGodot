@@ -180,7 +180,6 @@ impl GDNetworkManager {
 
     fn handle_data(&mut self, message_header: MessageHeader, buffer: &[u8]) {
         self.connection_timeout = 0.0;
-
         match message_header.get_data_type() {
             DataType::None => {}
             DataType::Rpc => {}
@@ -195,6 +194,9 @@ impl GDNetworkManager {
                 } else {
                     self.spawn_replicated_node(buffer);
                 }
+            }
+            DataType::Despawn => {
+                self.despawn_replicated_node(buffer);
             }
         }
     }
@@ -220,6 +222,17 @@ impl GDNetworkManager {
             .insert(net_id, replicated_node.clone());
         self.replicated_nodes
             .insert(replicated_node.clone(), net_id);
+    }
+
+    fn despawn_replicated_node(&mut self, buffer: &[u8]) {
+        let mut serializer = Serializer::new(buffer.to_vec());
+        let mut net_id: u32 = 0;
+        let _ = &mut serializer >> &mut net_id;
+
+        let replicated_node = self.replicated_nodes_id.get(&net_id).unwrap();
+        self.replicated_nodes.remove(&replicated_node);
+        replicated_node.clone().free();
+        self.replicated_nodes_id.remove(&net_id);
     }
 
     #[func]

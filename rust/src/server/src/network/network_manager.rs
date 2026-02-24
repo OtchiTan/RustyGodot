@@ -1,4 +1,5 @@
 ﻿use crate::network::connected_client::ConnectedClient;
+use crate::replication::DestroyEntity;
 use crate::replication::replicated_node::ReplicatedNode;
 use crate::replication::replication_manager::{ClientEntityLink, ReplicationManager};
 use bevy::prelude::{Commands, Resource};
@@ -101,22 +102,18 @@ impl NetworkManager {
         mut commands: Commands,
         replication_manager: &mut ReplicationManager,
     ) {
-        println!("{:?}", buffer);
         let mut deserializer = Serializer::new(buffer.clone());
         let mut bb: u32 = 0;
 
         let _ = &mut deserializer >> &mut bb;
 
-        println!("{bb}");
-
         let mut serializer = Serializer::new(buffer);
         let mut net_id: u32 = 0;
         let _ = &mut serializer >> &mut net_id;
-        println!("Net id : {net_id}");
 
         if let Some(client) = replication_manager.client_entities.get(&net_id) {
             for entity in client.possessed_entity.values() {
-                commands.entity(*entity).despawn();
+                commands.trigger(DestroyEntity { entity: *entity });
             }
             commands.entity(client.client).despawn();
         }

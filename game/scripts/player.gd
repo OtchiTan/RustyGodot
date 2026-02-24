@@ -20,7 +20,7 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	var direction := 0
+	var direction := 0.0
 	
 	if is_locally_owned():
 		# Handle jump.
@@ -31,9 +31,9 @@ func _physics_process(delta: float) -> void:
 	# Get the input direction and handle the movement/deceleration.
 	# As good practice, you should replace UI actions with custom gameplay actions.
 	
-	if direction > 0:
+	if direction > 0.0:
 		animated_sprite.flip_h = false
-	elif direction < 0:
+	elif direction < 0.0:
 		animated_sprite.flip_h = true
 		
 	if is_on_floor():

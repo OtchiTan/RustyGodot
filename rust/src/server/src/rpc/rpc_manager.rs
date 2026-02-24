@@ -34,6 +34,7 @@ impl RpcManager {
             }
             DataType::Replication => {}
             DataType::None => {}
+            DataType::Despawn => {}
         }
     }
 }
