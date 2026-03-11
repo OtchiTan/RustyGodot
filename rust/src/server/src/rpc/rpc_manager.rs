@@ -1,7 +1,7 @@
 ﻿use crate::replication::replicated_node::ReplicatedNode;
 use bevy::prelude::{Query, Resource};
 use common::message_header::{DataType, MessageHeader};
-use common::serializer::Serializer;
+use common::stream_reader::StreamReader;
 
 #[derive(Resource)]
 pub struct RpcManager {}
@@ -16,13 +16,10 @@ impl RpcManager {
     ) {
         match message_header.get_data_type() {
             DataType::Rpc => {
-                let mut serializer = Serializer::new(buffer.to_vec());
-                let mut net_id: u32 = 0;
-                let mut x: f32 = 0.0;
-                let mut y: f32 = 0.0;
-                let _ = &mut serializer >> &mut net_id;
-                let _ = &mut serializer >> &mut x;
-                let _ = &mut serializer >> &mut y;
+                let mut stream_reader = StreamReader::new(buffer);
+                let net_id = stream_reader.read_u32();
+                let x = stream_reader.read_f32();
+                let y = stream_reader.read_f32();
 
                 if let Some(mut replicated_node) = replicated_nodes
                     .iter_mut()

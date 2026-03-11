@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://6d6mqlnr27gb" path="res://scenes/coin.tscn" id="4_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://dus0fsil6ewob" path="res://scenes/killzone.tscn" id="5_iywne"]
 [ext_resource type="PackedScene" uid="uid://b2j0bxupyucm1" path="res://scenes/slime.tscn" id="6_p57ef"]
+[ext_resource type="PackedScene" uid="uid://dwt5siw3hhfp3" path="res://scenes/player.tscn" id="7_gee14"]
 [ext_resource type="FontFile" uid="uid://bnvrxvia1805t" path="res://assets/fonts/PixelOperator8.ttf" id="7_u5sy4"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_lnu2h"]
@@ -251,10 +252,10 @@ autoplay = &"move"
 [node name="Slime" parent="Monsters" unique_id=1501529389 instance=ExtResource("6_p57ef")]
 position = Vector2(592, 65)
 
-[node name="GDNetworkManager" type="GDNetworkManager" parent="." unique_id=1308535607]
+[node name="NetworkManager" type="GDNetworkManager" parent="." unique_id=828346607]
 unique_name_in_owner = true
 
-[node name="ConnectionStateLabel" type="Label" parent="GDNetworkManager" unique_id=337658368]
+[node name="ConnectionStateLabel" type="Label" parent="NetworkManager" unique_id=337658368]
 unique_name_in_owner = true
 offset_left = -82.0
 offset_top = 15.0
@@ -265,3 +266,7 @@ theme_override_colors/font_outline_color = Color(0, 0, 0.14901961, 1)
 theme_override_fonts/font = ExtResource("7_u5sy4")
 theme_override_font_sizes/font_size = 8
 text = "Not Connected"
+
+[node name="GDLinkingContext" type="GDLinkingContext" parent="." unique_id=2059153124]
+scenes_links = Array[PackedScene]([ExtResource("7_gee14"), ExtResource("7_gee14")])
+unique_name_in_owner = true

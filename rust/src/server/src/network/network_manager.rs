@@ -4,7 +4,8 @@ use crate::replication::replicated_node::ReplicatedNode;
 use crate::replication::replication_manager::{ClientEntityLink, ReplicationManager};
 use bevy::prelude::{Commands, Resource};
 use common::message_header::{DataType, MessageHeader, MessageType};
-use common::serializer::Serializer;
+use common::stream_reader::StreamReader;
+use common::stream_writer::StreamWriter;
 use snl::GameSocket;
 
 #[derive(Resource)]
@@ -28,12 +29,12 @@ impl NetworkManager {
     }
 
     fn handle_helo(&self, addr: String) {
-        let mut serializer = Serializer::new(vec![]);
-        let _ = &mut serializer << MessageHeader::new(MessageType::Helo, DataType::None).get_data();
+        let mut stream_writer = StreamWriter::new(vec![]);
+        stream_writer.write_u8(MessageHeader::new(MessageType::Helo, DataType::None).get_data());
         if let Some(socket) = self.socket.as_ref() {
             println!("Send helo to {}", addr);
             socket
-                .send(&addr, serializer.get_data())
+                .send(&addr, stream_writer.get_data())
                 .expect("Error Message sending");
         }
     }
@@ -74,24 +75,24 @@ impl NetworkManager {
                 .client_entities
                 .insert(client_net_id, client_entity);
 
-            let mut serializer = Serializer::new(vec![]);
-            let _ =
-                &mut serializer << MessageHeader::new(MessageType::Hsk, DataType::None).get_data();
-            let _ = &mut serializer << client_net_id;
+            let mut stream_writer = StreamWriter::new(vec![]);
+            stream_writer.write_u8(MessageHeader::new(MessageType::Hsk, DataType::None).get_data());
+            stream_writer.write_u32(client_net_id);
+
             println!("Send hsk to {}", addr);
             socket
-                .send(&addr, serializer.get_data())
+                .send(&addr, stream_writer.get_data())
                 .expect("Error Message sending");
         }
     }
 
     fn handle_ping(&self, addr: String) {
-        let mut serializer = Serializer::new(vec![]);
-        let _ = &mut serializer << MessageHeader::new(MessageType::Ping, DataType::None).get_data();
+        let mut stream_writer = StreamWriter::new(vec![]);
+        stream_writer.write_u8(MessageHeader::new(MessageType::Ping, DataType::None).get_data());
 
         if let Some(socket) = self.socket.as_ref() {
             socket
-                .send(&addr, serializer.get_data())
+                .send(&addr, stream_writer.get_data())
                 .expect("Error Message sending");
         }
     }
@@ -102,14 +103,8 @@ impl NetworkManager {
         mut commands: Commands,
         replication_manager: &mut ReplicationManager,
     ) {
-        let mut deserializer = Serializer::new(buffer.clone());
-        let mut bb: u32 = 0;
-
-        let _ = &mut deserializer >> &mut bb;
-
-        let mut serializer = Serializer::new(buffer);
-        let mut net_id: u32 = 0;
-        let _ = &mut serializer >> &mut net_id;
+        let mut stream_reader = StreamReader::new(buffer);
+        let net_id = stream_reader.read_u32();
 
         if let Some(client) = replication_manager.client_entities.get(&net_id) {
             for entity in client.possessed_entity.values() {

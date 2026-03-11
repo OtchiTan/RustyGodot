@@ -1,54 +1,82 @@
-﻿use crate::player::GDPlayer;
-use godot::classes::{Node, PackedScene};
-use godot::obj::{Gd, GodotClass, Inherits};
-use godot::tools::load;
+﻿use crate::replicated_node::GDReplicatedNode;
+use godot::classes::{INode, Node, PackedScene};
+use godot::obj::{Base, Gd, WithBaseField};
+use godot::prelude::{godot_api, Array, GodotClass};
+use std::collections::HashMap;
+use common::stream_reader::StreamReader;
 
-pub trait Serializable {
-    fn serialize(&mut self) -> Vec<u8>;
-    fn deserialize(&mut self, bytes: Vec<u8>);
+#[derive(GodotClass)]
+#[class(base=Node)]
+pub struct GDLinkingContext {
+    #[export]
+    pub scenes_links: Array<Gd<PackedScene>>,
+
+    replicated_nodes: HashMap<u32, Gd<GDReplicatedNode>>,
+
+    base: Base<Node>,
 }
 
-pub struct LinkingContext {
-    spawn_functions: Vec<Box<dyn Fn() -> Gd<Node>>>,
+#[godot_api]
+impl INode for GDLinkingContext {
+    fn init(base: Base<Self::Base>) -> Self {
+        Self {
+            base,
+            scenes_links: Array::new(),
+            replicated_nodes: HashMap::new(),
+        }
+    }
 }
 
-impl LinkingContext {
-    pub fn new() -> Self {
-        let mut spawn_functions: Vec<Box<dyn Fn() -> Gd<Node>>> = Vec::new();
+#[godot_api]
+impl GDLinkingContext {
+    pub fn handle_snapshot(&mut self, buffer: Vec<u8>) {
+        let mut stream_reader = StreamReader::new(buffer.to_vec());
+        let net_id = stream_reader.read_u32();
 
-        Self::register::<GDPlayer>("scenes/player.tscn", &mut spawn_functions);
-
-        Self { spawn_functions }
-    }
-
-    fn register<T>(scene_path: &str, spawn_functions: &mut Vec<Box<dyn Fn() -> Gd<Node>>>)
-    where
-        T: Inherits<Node> + GodotClass + Serializable,
-    {
-        let path = scene_path.to_string();
-        spawn_functions.push(Box::new(move || {
-            let scene: Gd<PackedScene> = load(&path);
-            let instance = scene.instantiate_as::<Node>();
-            instance
-        }));
-    }
-
-    pub fn spawn(&self, type_id: usize) -> Gd<Node> {
-        self.spawn_functions[type_id]()
-    }
-
-    pub fn serialize(&self, node: Gd<Node>) -> Vec<u8> {
-        let mut data = vec![];
-        if let Ok(mut node) = node.try_cast::<GDPlayer>() {
-            data = node.bind_mut().serialize();
+        let replicated_node = self.get_replicated_node(net_id);
+        if let Some(replicated_node) = replicated_node {
+            replicated_node
+                .signals()
+                .deserialize()
+                .emit(buffer[8..].to_vec());
+        } else {
+            self.spawn(buffer);
         }
-
-        data
     }
 
-    pub fn deserialize(&self, node: Gd<Node>, data: Vec<u8>) {
-        if let Ok(mut node) = node.try_cast::<GDPlayer>() {
-            node.bind_mut().deserialize(data);
+    pub fn spawn(&mut self, buffer: Vec<u8>) {
+        let mut stream_reader = StreamReader::new(buffer.to_vec());
+        let net_id = stream_reader.read_u32();
+        let type_id = stream_reader.read_u32();
+
+        if let Some(scene) = &self.scenes_links.get(type_id as usize) {
+            let mut replicated_node = scene.instantiate_as::<GDReplicatedNode>();
+
+            replicated_node.bind_mut().net_id = net_id;
+
+            self.replicated_nodes
+                .insert(net_id, replicated_node.clone());
+
+            self.base_mut().add_child(&replicated_node);
+
+            replicated_node
+                .signals()
+                .deserialize()
+                .emit(buffer[8..].to_vec());
         }
+    }
+
+    pub fn despawn(&mut self, net_id: u32) {
+        if let Some(replicated_node) = self.replicated_nodes.get_mut(&net_id) {
+            replicated_node.queue_free();
+        }
+        self.replicated_nodes.remove(&net_id);
+    }
+
+    pub fn get_replicated_node(&self, net_id: u32) -> Option<Gd<GDReplicatedNode>> {
+        if let Some(replicated_node) = self.replicated_nodes.get(&net_id) {
+            return Some(replicated_node.clone());
+        }
+        None
     }
 }

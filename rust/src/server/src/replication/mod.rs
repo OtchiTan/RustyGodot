@@ -5,7 +5,7 @@ use crate::replication::replication_manager::ReplicationManager;
 use bevy::app::{App, FixedUpdate, Plugin};
 use bevy::prelude::{Commands, Entity, EntityEvent, Fixed, On, Query, Res, Time};
 use common::message_header::{DataType, MessageHeader, MessageType};
-use common::serializer::Serializer;
+use common::stream_writer::StreamWriter;
 use std::collections::HashMap;
 
 pub mod replicated_node;
@@ -31,15 +31,15 @@ fn update_replication(
 ) {
     for replicated_node in replicated_nodes.iter() {
         let message_header = MessageHeader::new(MessageType::Data, DataType::Replication);
-        let mut serializer = Serializer::new(vec![]);
-        let _ = &mut serializer << message_header.get_data();
-        let _ = &mut serializer << replicated_node.net_id;
-        let _ = &mut serializer << replicated_node.type_id;
-        let _ = &mut serializer << replicated_node.x;
-        let _ = &mut serializer << replicated_node.y;
-        let _ = &mut serializer << replicated_node.owner_id;
+        let mut stream_writer = StreamWriter::new(vec![]);
+        stream_writer.write_u8(message_header.get_data());
+        stream_writer.write_u32(replicated_node.net_id);
+        stream_writer.write_u32(replicated_node.type_id);
+        stream_writer.write_f32(replicated_node.x);
+        stream_writer.write_f32(replicated_node.y);
+        stream_writer.write_u32(replicated_node.owner_id);
         for client in clients.iter() {
-            network_manager.send_data(&client.address, serializer.get_data());
+            network_manager.send_data(&client.address, stream_writer.get_data());
         }
     }
 }
@@ -57,13 +57,13 @@ fn on_destroy_entity(
     mut commands: Commands,
 ) {
     if let Ok(replicated_node) = replicated_nodes.get(event.entity) {
-        let mut serializer = Serializer::new(vec![]);
+        let mut stream_writer = StreamWriter::new(vec![]);
         let message_header = MessageHeader::new(MessageType::Data, DataType::Despawn);
-        let _ = &mut serializer << message_header.get_data();
-        let _ = &mut serializer << replicated_node.net_id;
+        stream_writer.write_u8(message_header.get_data());
+        stream_writer.write_u32(replicated_node.net_id);
 
         for connected_client in connected_clients.iter() {
-            network_manager.send_data(&connected_client.address, serializer.get_data());
+            network_manager.send_data(&connected_client.address, stream_writer.get_data());
         }
 
         commands.entity(event.entity).despawn();

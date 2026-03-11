@@ -6,13 +6,11 @@ const JUMP_VELOCITY = -300.0
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
-var gd_network_manager: GDNetworkManager
-
 func _jump() -> void :
 	velocity.y = JUMP_VELOCITY
 	
 func _ready() -> void:
-	self.gd_network_manager = get_parent()
+	pass
 
 func _physics_process(delta: float) -> void:
 	# Add the gravity.
@@ -52,5 +50,7 @@ func _physics_process(delta: float) -> void:
 	
 	if velocity.length() > 0:
 		move_and_slide()
-	
-		gd_network_manager.replicate_node(self)
+
+
+func _on_gd_replicated_node_deserialize(bytes: Array[int]) -> void:
+	deserialize(bytes)

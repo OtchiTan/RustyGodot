@@ -1,12 +1,12 @@
-﻿use crate::linking_context::LinkingContext;
+﻿use crate::linking_context::GDLinkingContext;
 use common::message_header::{DataType, MessageHeader, MessageType};
-use common::serializer::Serializer;
+use common::stream_reader::StreamReader;
+use common::stream_writer::StreamWriter;
 use godot::classes::{INode, Label, Node};
 use godot::global::godot_print;
 use godot::obj::{Base, Gd, WithBaseField};
 use godot::prelude::{godot_api, GodotClass};
 use snl::GameSocket;
-use std::collections::HashMap;
 
 const SERVER_IP: &str = "127.0.0.1:3630";
 
@@ -37,29 +37,20 @@ pub struct GDNetworkManager {
     connection_timeout: f64,
     ping_sent: u32,
 
-    linking_context: LinkingContext,
     pub client_id: u32,
-    replicated_nodes: HashMap<Gd<Node>, u32>,
-    replicated_nodes_id: HashMap<u32, Gd<Node>>,
-
     base: Base<Node>,
 }
 
 #[godot_api]
 impl INode for GDNetworkManager {
     fn init(base: Base<Node>) -> Self {
-        godot_print!("Network Manager initialized!");
-
         Self {
             socket: None,
-            base,
             connection_state: ConnectionState::NotConnected,
             connection_timeout: 0.0,
             ping_sent: 0,
-            linking_context: LinkingContext::new(),
             client_id: 0,
-            replicated_nodes: HashMap::new(),
-            replicated_nodes_id: HashMap::new(),
+            base,
         }
     }
 
@@ -116,7 +107,6 @@ impl INode for GDNetworkManager {
     }
 }
 
-#[godot_api]
 impl GDNetworkManager {
     pub fn send_message(&self, message_type: MessageType, buffer: &mut Vec<u8>) {
         let mut message_content: Vec<u8> =
@@ -168,14 +158,19 @@ impl GDNetworkManager {
         self.connection_timeout = 0.0;
     }
 
-    fn disconnect_socket(&mut self, send_bye: bool) {
+    pub fn disconnect_socket(&mut self, send_bye: bool) {
         self.ping_sent = 0;
         if send_bye {
-            let mut serializer = Serializer::new(vec![]);
-            let _ = &mut serializer << self.client_id;
-            self.send_message(MessageType::Bye, &mut serializer.get_data().to_vec());
+            let mut stream_writer = StreamWriter::new(vec![]);
+            stream_writer.write_u32(self.client_id);
+            self.send_message(MessageType::Bye, &mut stream_writer.get_data().to_vec());
         }
         self.set_connection_state(ConnectionState::NotConnected);
+    }
+
+    fn get_linking_context(&mut self) -> Gd<GDLinkingContext> {
+        self.base()
+            .get_node_as::<GDLinkingContext>("%GDLinkingContext")
     }
 
     fn handle_data(&mut self, message_header: MessageHeader, buffer: &[u8]) {
@@ -184,16 +179,9 @@ impl GDNetworkManager {
             DataType::None => {}
             DataType::Rpc => {}
             DataType::Replication => {
-                let mut serializer = Serializer::new(buffer.to_vec());
-                let mut net_id: u32 = 0;
-                let _ = &mut serializer >> &mut net_id;
-
-                if let Some(replicated_node) = self.get_node_by_id(net_id) {
-                    self.linking_context
-                        .deserialize(replicated_node.clone(), buffer[8..].to_vec());
-                } else {
-                    self.spawn_replicated_node(buffer);
-                }
+                self.get_linking_context()
+                    .bind_mut()
+                    .handle_snapshot(buffer.to_vec());
             }
             DataType::Despawn => {
                 self.despawn_replicated_node(buffer);
@@ -201,49 +189,10 @@ impl GDNetworkManager {
         }
     }
 
-    pub fn get_node_by_id(&self, id: u32) -> Option<Gd<Node>> {
-        self.replicated_nodes_id.get(&id).cloned()
-    }
-
-    fn spawn_replicated_node(&mut self, buffer: &[u8]) {
-        let mut serializer = Serializer::new(buffer.to_vec());
-        let mut net_id: u32 = 0;
-        let mut type_id: u32 = 0;
-        let _ = &mut serializer >> &mut net_id;
-        let _ = &mut serializer >> &mut type_id;
-
-        let replicated_node = self.linking_context.spawn(type_id as usize);
-        self.linking_context
-            .deserialize(replicated_node.clone(), buffer[8..].to_vec());
-
-        self.base_mut().add_child(&replicated_node);
-
-        self.replicated_nodes_id
-            .insert(net_id, replicated_node.clone());
-        self.replicated_nodes
-            .insert(replicated_node.clone(), net_id);
-    }
-
     fn despawn_replicated_node(&mut self, buffer: &[u8]) {
-        let mut serializer = Serializer::new(buffer.to_vec());
-        let mut net_id: u32 = 0;
-        let _ = &mut serializer >> &mut net_id;
+        let mut stream_reader = StreamReader::new(buffer.to_vec());
+        let net_id = stream_reader.read_u32();
 
-        let replicated_node = self.replicated_nodes_id.get(&net_id).unwrap();
-        self.replicated_nodes.remove(&replicated_node);
-        replicated_node.clone().free();
-        self.replicated_nodes_id.remove(&net_id);
-    }
-
-    #[func]
-    pub fn replicate_node(&mut self, node: Gd<Node>) {
-        let mut data = self.linking_context.serialize(node.clone());
-        if let Some(net_id) = self.replicated_nodes.get(&node) {
-            let mut serializer = Serializer::new(vec![]);
-            let _ = &mut serializer << *net_id;
-            let mut buffer = serializer.get_data().to_vec();
-            buffer.append(&mut data);
-            self.send_message(MessageType::Data, &mut buffer);
-        }
+        self.get_linking_context().bind_mut().despawn(net_id);
     }
 }

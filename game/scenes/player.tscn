@@ -204,17 +204,21 @@ animations = [{
 [sub_resource type="CircleShape2D" id="CircleShape2D_3vyb7"]
 radius = 5.0
 
-[node name="Player" type="GDPlayer" unique_id=620504706]
+[node name="GDReplicatedNode" type="GDReplicatedNode" unique_id=1097131201]
+
+[node name="Player" type="GDPlayer" parent="." unique_id=620504706]
 collision_layer = 2
 script = ExtResource("1_g2els")
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2015160754]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Player" unique_id=2015160754]
 z_index = 5
 position = Vector2(1, -12)
 sprite_frames = SubResource("SpriteFrames_tuyoq")
 animation = &"die"
 autoplay = "idle"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1957010121]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=1957010121]
 position = Vector2(1, -5)
 shape = SubResource("CircleShape2D_3vyb7")
+
+[connection signal="deserialize" from="." to="Player" method="_on_gd_replicated_node_deserialize"]
