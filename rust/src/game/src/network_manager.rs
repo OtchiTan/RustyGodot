@@ -2,11 +2,12 @@
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::stream_reader::StreamReader;
 use common::stream_writer::StreamWriter;
-use godot::classes::{INode, Node};
-use godot::global::godot_print;
+use godot::classes::{INode, Label, Node};
+use godot::global::{godot_print, godot_str};
 use godot::obj::{Base, Gd, WithBaseField};
 use godot::prelude::{godot_api, GodotClass};
 use snl::GameSocket;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const SERVER_IP: &str = "127.0.0.1:3630";
 
@@ -49,7 +50,6 @@ impl INode for GDNetworkManager {
             match socket.poll(&mut buf) {
                 Some((size, _)) => {
                     let buf = &mut buf[..size];
-
                     let mut stream_reader = StreamReader::new(buf.to_vec());
                     let mut message_header = MessageHeader::new();
                     stream_reader.read_serializable(&mut message_header);
@@ -63,7 +63,7 @@ impl INode for GDNetworkManager {
                             let mut buffer: Vec<u8> = vec![];
                             self.send_message(MessageType::Data, &mut buffer);
                         }
-                        MessageType::Ping => self.set_connection_state(ConnectionState::Connected),
+                        MessageType::Ping => self.handle_ping(stream_reader.get_rest_buffer()),
                         MessageType::Data => {
                             self.handle_data(message_header, stream_reader.get_rest_buffer())
                         }
@@ -77,6 +77,17 @@ impl INode for GDNetworkManager {
         if self.connection_timeout > 0.100 {
             self.handle_timeout()
         }
+    }
+
+    fn physics_process(&mut self, _delta: f64) {
+        let mut stream_writer = StreamWriter::new();
+        stream_writer.write_u64(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+        );
+        self.send_message(MessageType::Ping, &mut stream_writer.get_data().to_vec());
     }
 
     fn exit_tree(&mut self) {
@@ -98,7 +109,7 @@ impl INode for GDNetworkManager {
 
 impl GDNetworkManager {
     pub fn send_message(&self, message_type: MessageType, buffer: &mut Vec<u8>) {
-        let mut stream_writer = StreamWriter::new(vec![]);
+        let mut stream_writer = StreamWriter::new();
         stream_writer.write_serializable(MessageHeader::init(message_type, DataType::Rpc));
         stream_writer.write_bytes(buffer);
 
@@ -146,7 +157,7 @@ impl GDNetworkManager {
     pub fn disconnect_socket(&mut self, send_bye: bool) {
         self.ping_sent = 0;
         if send_bye {
-            let mut stream_writer = StreamWriter::new(vec![]);
+            let mut stream_writer = StreamWriter::new();
             stream_writer.write_u32(self.client_id);
             self.send_message(MessageType::Bye, &mut stream_writer.get_data().to_vec());
         }
@@ -156,6 +167,19 @@ impl GDNetworkManager {
     fn get_linking_context(&mut self) -> Gd<GDLinkingContext> {
         self.base()
             .get_node_as::<GDLinkingContext>("%GDLinkingContext")
+    }
+
+    fn handle_ping(&mut self, buffer: &[u8]) {
+        let mut stream_reader = StreamReader::new(buffer.to_vec());
+        let t1 = stream_reader.read_u64();
+        let t2 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+
+        let rtt = Duration::from_millis(t2 - t1).as_millis();
+        let mut label = self.base_mut().get_node_as::<Label>("%LatencyLabel");
+        label.set_text(&godot_str!("{rtt} ms"));
     }
 
     fn handle_data(&mut self, message_header: MessageHeader, buffer: &[u8]) {

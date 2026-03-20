@@ -7,8 +7,8 @@ pub struct StreamWriter {
 }
 
 impl StreamWriter {
-    pub fn new(buffer: Vec<u8>) -> Self {
-        Self { buffer }
+    pub fn new() -> Self {
+        Self { buffer: vec![] }
     }
 
     pub fn get_data(&self) -> &[u8] {

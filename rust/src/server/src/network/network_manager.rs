@@ -7,6 +7,7 @@ use common::message_header::{DataType, MessageHeader, MessageType};
 use common::stream_reader::StreamReader;
 use common::stream_writer::StreamWriter;
 use snl::GameSocket;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Resource)]
 pub struct NetworkManager {
@@ -29,7 +30,7 @@ impl NetworkManager {
     }
 
     fn handle_helo(&self, addr: String) {
-        let mut stream_writer = StreamWriter::new(vec![]);
+        let mut stream_writer = StreamWriter::new();
         stream_writer.write_serializable(MessageHeader::init(MessageType::Helo, DataType::None));
         if let Some(socket) = self.socket.as_ref() {
             println!("Send helo to {}", addr);
@@ -75,7 +76,7 @@ impl NetworkManager {
                 .client_entities
                 .insert(client_net_id, client_entity);
 
-            let mut stream_writer = StreamWriter::new(vec![]);
+            let mut stream_writer = StreamWriter::new();
             stream_writer.write_serializable(MessageHeader::init(MessageType::Hsk, DataType::None));
             stream_writer.write_u32(client_net_id);
 
@@ -86,9 +87,16 @@ impl NetworkManager {
         }
     }
 
-    fn handle_ping(&self, addr: String) {
-        let mut stream_writer = StreamWriter::new(vec![]);
+    fn handle_ping(&self, addr: String, buffer: &[u8]) {
+        let mut stream_writer = StreamWriter::new();
         stream_writer.write_serializable(MessageHeader::init(MessageType::Ping, DataType::None));
+        stream_writer.write_bytes(buffer);
+        stream_writer.write_u64(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+        );
 
         if let Some(socket) = self.socket.as_ref() {
             socket
@@ -126,7 +134,7 @@ impl NetworkManager {
                 Some((size, socket_addr)) => {
                     let buf = &mut buf[..size];
                     let mut stream_reader = StreamReader::new(buf.to_vec());
-                    let mut message_header = MessageHeader::new() ;
+                    let mut message_header = MessageHeader::new();
                     stream_reader.read_serializable(&mut message_header);
                     match message_header.message_type {
                         MessageType::Helo => {
@@ -138,7 +146,7 @@ impl NetworkManager {
                             None
                         }
                         MessageType::Ping => {
-                            self.handle_ping(socket_addr);
+                            self.handle_ping(socket_addr, stream_reader.get_rest_buffer());
                             None
                         }
                         MessageType::Data => Some((

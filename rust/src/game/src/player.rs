@@ -84,7 +84,7 @@ impl GDPlayer {
             let mut data = input_packet.serialize();
             network_manager
                 .bind()
-                .send_message(MessageType::Data, &mut data)
+                .send_message(MessageType::Data, &mut data);
         }
     }
 

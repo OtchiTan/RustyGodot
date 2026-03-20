@@ -30,7 +30,7 @@ impl InputPacket {
     }
 
     pub fn serialize(&self) -> Vec<u8> {
-        let mut stream_writer = StreamWriter::new(vec![]);
+        let mut stream_writer = StreamWriter::new();
 
         stream_writer.write_u32(self.net_id);
         stream_writer.write_u32(self.sequence);
