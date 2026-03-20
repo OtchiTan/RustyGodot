@@ -1,7 +1,7 @@
 ﻿use crate::replication::replicated_node::ReplicatedNode;
 use bevy::prelude::{Query, Resource};
+use common::input_packet::{Input, InputPacket};
 use common::message_header::{DataType, MessageHeader};
-use common::stream_reader::StreamReader;
 
 #[derive(Resource)]
 pub struct RpcManager {}
@@ -16,17 +16,27 @@ impl RpcManager {
     ) {
         match message_header.get_data_type() {
             DataType::Rpc => {
-                let mut stream_reader = StreamReader::new(buffer);
-                let net_id = stream_reader.read_u32();
-                let x = stream_reader.read_f32();
-                let y = stream_reader.read_f32();
-
+                let input_packet = InputPacket::deserialize(buffer);
                 if let Some(mut replicated_node) = replicated_nodes
                     .iter_mut()
-                    .find(|node| node.net_id == net_id)
+                    .find(|node| node.net_id == input_packet.net_id)
                 {
-                    replicated_node.x = x;
-                    replicated_node.y = y;
+                    let x = if input_packet.read_input(Input::Right) {
+                        5.0
+                    } else if input_packet.read_input(Input::Left) {
+                        -5.0
+                    } else {
+                        0.0
+                    };
+                    replicated_node.x += x;
+                    let y = if input_packet.read_input(Input::Down) {
+                        5.0
+                    } else if input_packet.read_input(Input::Up) {
+                        -5.0
+                    } else {
+                        0.0
+                    };
+                    replicated_node.y += y;
                 }
             }
             DataType::Replication => {}

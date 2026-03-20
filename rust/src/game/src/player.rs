@@ -1,4 +1,7 @@
 ﻿use crate::network_manager::GDNetworkManager;
+use crate::replicated_node::GDReplicatedNode;
+use common::input_packet::{Input, InputPacket};
+use common::message_header::MessageType;
 use common::stream_reader::StreamReader;
 use godot::builtin::Vector2;
 use godot::classes::{CharacterBody2D, ICharacterBody2D};
@@ -44,7 +47,45 @@ impl ICharacterBody2D for GDPlayer {
 impl GDPlayer {
     #[func]
     pub fn is_locally_owned(&self) -> bool {
+        if let Some(network_manager) = &self.network_manager {
+            return self.owner_id == network_manager.bind().client_id
+        }
         false
+    }
+
+    #[func]
+    pub fn send_input(&mut self, direction: Vector2) {
+        if !self.is_locally_owned() {
+            return;
+        }
+
+        let replicated_node = self.base().get_parent().unwrap().cast::<GDReplicatedNode>();
+
+        let mut input_packet = InputPacket::new(replicated_node.bind().net_id);
+
+        if direction.y > 0.0 {
+            input_packet.add_input(Input::Up)
+        }
+        if direction.y < 0.0 {
+            input_packet.add_input(Input::Down)
+        }
+        if direction.x > 0.0 {
+            input_packet.add_input(Input::Right)
+        }
+        if direction.x < 0.0 {
+            input_packet.add_input(Input::Left)
+        }
+
+        if input_packet.keys == 0 {
+            return;
+        }
+
+        if let Some(network_manager) = &mut self.network_manager {
+            let mut data = input_packet.serialize();
+            network_manager
+                .bind()
+                .send_message(MessageType::Data, &mut data)
+        }
     }
 
     #[func]
