@@ -59,8 +59,8 @@ impl NetworkManager {
                 net_id: player_net_id,
                 type_id: 0,
                 owner_id: client_net_id,
-                x: rand::random_range(-100.0..100.0),
-                y: 0.0,
+                x: rand::random_range(20.0..180.0) * 16.0,
+                y: rand::random_range(20.0..90.0) * 16.0,
             };
 
             let player_entity = commands.spawn(player).id();

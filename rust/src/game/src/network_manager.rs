@@ -2,7 +2,7 @@
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::stream_reader::StreamReader;
 use common::stream_writer::StreamWriter;
-use godot::classes::{INode, Label, Node};
+use godot::classes::{INode, Node};
 use godot::global::godot_print;
 use godot::obj::{Base, Gd, WithBaseField};
 use godot::prelude::{godot_api, GodotClass};
@@ -124,10 +124,6 @@ impl GDNetworkManager {
     fn set_connection_state(&mut self, connection_state: ConnectionState) {
         self.connection_state = connection_state;
         self.connection_timeout = 0.0;
-
-        let mut state_connection_label = self.base().get_node_as::<Label>("%ConnectionStateLabel");
-        let connection_state_text = self.connection_state.clone().to_string();
-        state_connection_label.set_text(connection_state_text.as_str());
         godot_print!("Connection state: {:?}", self.connection_state);
     }
 

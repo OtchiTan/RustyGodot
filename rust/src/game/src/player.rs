@@ -31,8 +31,9 @@ impl ICharacterBody2D for GDPlayer {
     fn ready(&mut self) {
         self.network_manager = Some(
             self.base()
-                .get_tree()
-                .get_root()
+                .get_parent()
+                .unwrap()
+                .get_parent()
                 .unwrap()
                 .get_node_as::<GDNetworkManager>("%GDNetworkManager"),
         );
