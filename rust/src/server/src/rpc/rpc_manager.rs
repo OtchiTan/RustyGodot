@@ -14,7 +14,7 @@ impl RpcManager {
         buffer: Vec<u8>,
         mut replicated_nodes: Query<&mut ReplicatedNode>,
     ) {
-        match message_header.get_data_type() {
+        match message_header.data_type {
             DataType::Rpc => {
                 let input_packet = InputPacket::deserialize(buffer);
                 if let Some(mut replicated_node) = replicated_nodes

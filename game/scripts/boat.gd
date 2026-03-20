@@ -9,4 +9,5 @@ func _physics_process(delta: float) -> void:
 
 
 func _on_boat_deserialize(bytes: Array[int]) -> void:
-	deserialize(bytes)
+	deserialize_bytes(bytes)
+	pass

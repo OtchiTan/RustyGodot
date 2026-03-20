@@ -2,7 +2,7 @@
 use crate::replicated_node::GDReplicatedNode;
 use common::input_packet::{Input, InputPacket};
 use common::message_header::MessageType;
-use common::stream_reader::StreamReader;
+use common::stream_reader::{Deserializable, StreamReader};
 use godot::builtin::Vector2;
 use godot::classes::{CharacterBody2D, ICharacterBody2D};
 use godot::obj::{Base, Gd, WithBaseField};
@@ -48,7 +48,7 @@ impl GDPlayer {
     #[func]
     pub fn is_locally_owned(&self) -> bool {
         if let Some(network_manager) = &self.network_manager {
-            return self.owner_id == network_manager.bind().client_id
+            return self.owner_id == network_manager.bind().client_id;
         }
         false
     }
@@ -89,9 +89,14 @@ impl GDPlayer {
     }
 
     #[func]
-    pub fn deserialize(&mut self, bytes: Vec<u8>) {
+    pub fn deserialize_bytes(&mut self, bytes: Vec<u8>) {
         let mut stream_reader = StreamReader::new(bytes);
+        self.deserialize(&mut stream_reader);
+    }
+}
 
+impl Deserializable for GDPlayer {
+    fn deserialize(&mut self, stream_reader: &mut StreamReader) {
         let x = stream_reader.read_f32();
         let y = stream_reader.read_f32();
         self.owner_id = stream_reader.read_u32();

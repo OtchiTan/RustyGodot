@@ -1,4 +1,6 @@
-﻿
+﻿pub trait Deserializable {
+    fn deserialize(&mut self, stream_reader: &mut StreamReader);
+}
 
 pub struct StreamReader {
     buffer: Vec<u8>,
@@ -89,5 +91,13 @@ impl StreamReader {
         let data = &self.buffer[self.cursor..self.cursor + 8];
         self.cursor += 8;
         f64::from_le_bytes(data.try_into().unwrap())
+    }
+    
+    pub fn read_serializable<T: Deserializable>(&mut self, serializable: &mut T) {
+        serializable.deserialize(self);
+    }
+
+    pub fn get_rest_buffer(&self) -> &[u8] {
+        &self.buffer[self.cursor..]
     }
 }

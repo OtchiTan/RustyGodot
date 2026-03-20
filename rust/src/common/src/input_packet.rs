@@ -44,6 +44,7 @@ impl InputPacket {
     pub fn deserialize(data: Vec<u8>) -> InputPacket {
         let mut stream_reader = StreamReader::new(data);
 
+
         let net_id = stream_reader.read_u32();
         let sequence = stream_reader.read_u32();
         let keys = stream_reader.read_u8();

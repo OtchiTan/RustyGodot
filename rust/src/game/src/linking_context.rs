@@ -1,9 +1,9 @@
 ﻿use crate::replicated_node::GDReplicatedNode;
+use common::stream_reader::StreamReader;
 use godot::classes::{INode, Node, PackedScene};
 use godot::obj::{Base, Gd, WithBaseField};
 use godot::prelude::{godot_api, Array, GodotClass};
 use std::collections::HashMap;
-use common::stream_reader::StreamReader;
 
 #[derive(GodotClass)]
 #[class(base=Node)]
@@ -32,23 +32,20 @@ impl GDLinkingContext {
     pub fn handle_snapshot(&mut self, buffer: Vec<u8>) {
         let mut stream_reader = StreamReader::new(buffer.to_vec());
         let net_id = stream_reader.read_u32();
+        let type_id = stream_reader.read_u32();
 
         let replicated_node = self.get_replicated_node(net_id);
         if let Some(replicated_node) = replicated_node {
             replicated_node
                 .signals()
                 .deserialize()
-                .emit(buffer[8..].to_vec());
+                .emit(stream_reader.get_rest_buffer().to_vec());
         } else {
-            self.spawn(buffer);
+            self.spawn(net_id, type_id, buffer);
         }
     }
 
-    pub fn spawn(&mut self, buffer: Vec<u8>) {
-        let mut stream_reader = StreamReader::new(buffer.to_vec());
-        let net_id = stream_reader.read_u32();
-        let type_id = stream_reader.read_u32();
-
+    pub fn spawn(&mut self, net_id: u32, type_id: u32, buffer: Vec<u8>) {
         if let Some(scene) = &self.scenes_links.get(type_id as usize) {
             let mut replicated_node = scene.instantiate_as::<GDReplicatedNode>();
 
@@ -62,7 +59,7 @@ impl GDLinkingContext {
             replicated_node
                 .signals()
                 .deserialize()
-                .emit(buffer[8..].to_vec());
+                .emit(buffer.to_vec());
         }
     }
 

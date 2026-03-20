@@ -1,46 +1,40 @@
-﻿#[derive(Debug, PartialEq, Eq)]
+﻿use crate::stream_reader::{Deserializable, StreamReader};
+use crate::stream_writer::{Serializable, StreamWriter};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum MessageType {
-    Helo,
-    Hsk,
-    Ping,
-    Data,
-    Bye,
+    Helo = 0,
+    Hsk = 1,
+    Ping = 2,
+    Data = 3,
+    Bye = 4,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DataType {
-    None,
-    Rpc,
-    Replication,
-    Despawn,
+    None = 0,
+    Rpc = 1,
+    Replication = 2,
+    Despawn = 3,
 }
 
 pub struct MessageHeader {
-    data: u8,
+    pub message_type: MessageType,
+    pub data_type: DataType,
 }
 
 impl MessageHeader {
-    pub fn new(message_type: MessageType, data_type: DataType) -> Self {
-        let mut data: u8 = (message_type as u8) << 2;
-        data = data | (data_type as u8 & 0x3);
-        MessageHeader { data }
+    pub fn new() -> Self {
+        Self {
+            message_type: MessageType::Helo,
+            data_type: DataType::None,
+        }
     }
-
-    pub fn from_data(data: u8) -> Self {
-        Self { data }
-    }
-
-    pub fn get_message_type(&self) -> MessageType {
-        let data = self.data;
-        MessageType::try_from(data >> 2).unwrap()
-    }
-
-    pub fn get_data_type(&self) -> DataType {
-        DataType::try_from(self.data & 0x3).unwrap()
-    }
-
-    pub fn get_data(&self) -> u8 {
-        self.data
+    pub fn init(message_type: MessageType, data_type: DataType) -> Self {
+        Self {
+            message_type,
+            data_type,
+        }
     }
 }
 
@@ -73,5 +67,19 @@ impl TryFrom<u8> for DataType {
             3 => Ok(DataType::Despawn),
             _ => Err(EnumError),
         }
+    }
+}
+
+impl Serializable for MessageHeader {
+    fn serialize(&self, stream: &mut StreamWriter) {
+        stream.write_u8(self.message_type as u8);
+        stream.write_u8(self.data_type as u8);
+    }
+}
+
+impl Deserializable for MessageHeader {
+    fn deserialize(&mut self, stream: &mut StreamReader) {
+        self.message_type = MessageType::try_from(stream.read_u8()).unwrap();
+        self.data_type = DataType::try_from(stream.read_u8()).unwrap();
     }
 }

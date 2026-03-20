@@ -30,7 +30,7 @@ impl NetworkManager {
 
     fn handle_helo(&self, addr: String) {
         let mut stream_writer = StreamWriter::new(vec![]);
-        stream_writer.write_u8(MessageHeader::new(MessageType::Helo, DataType::None).get_data());
+        stream_writer.write_serializable(MessageHeader::init(MessageType::Helo, DataType::None));
         if let Some(socket) = self.socket.as_ref() {
             println!("Send helo to {}", addr);
             socket
@@ -76,7 +76,7 @@ impl NetworkManager {
                 .insert(client_net_id, client_entity);
 
             let mut stream_writer = StreamWriter::new(vec![]);
-            stream_writer.write_u8(MessageHeader::new(MessageType::Hsk, DataType::None).get_data());
+            stream_writer.write_serializable(MessageHeader::init(MessageType::Hsk, DataType::None));
             stream_writer.write_u32(client_net_id);
 
             println!("Send hsk to {}", addr);
@@ -88,7 +88,7 @@ impl NetworkManager {
 
     fn handle_ping(&self, addr: String) {
         let mut stream_writer = StreamWriter::new(vec![]);
-        stream_writer.write_u8(MessageHeader::new(MessageType::Ping, DataType::None).get_data());
+        stream_writer.write_serializable(MessageHeader::init(MessageType::Ping, DataType::None));
 
         if let Some(socket) = self.socket.as_ref() {
             socket
@@ -125,9 +125,10 @@ impl NetworkManager {
             return match socket.poll(&mut buf) {
                 Some((size, socket_addr)) => {
                     let buf = &mut buf[..size];
-
-                    let message_header = MessageHeader::from_data(buf[0]);
-                    match message_header.get_message_type() {
+                    let mut stream_reader = StreamReader::new(buf.to_vec());
+                    let mut message_header = MessageHeader::new() ;
+                    stream_reader.read_serializable(&mut message_header);
+                    match message_header.message_type {
                         MessageType::Helo => {
                             self.handle_helo(socket_addr);
                             None
@@ -140,9 +141,17 @@ impl NetworkManager {
                             self.handle_ping(socket_addr);
                             None
                         }
-                        MessageType::Data => Some((socket_addr, message_header, buf[1..].to_vec())),
+                        MessageType::Data => Some((
+                            socket_addr,
+                            message_header,
+                            stream_reader.get_rest_buffer().to_vec(),
+                        )),
                         MessageType::Bye => {
-                            self.handle_bye(buf[1..].to_vec(), commands, replication_manager);
+                            self.handle_bye(
+                                stream_reader.get_rest_buffer().to_vec(),
+                                commands,
+                                replication_manager,
+                            );
                             None
                         }
                     }

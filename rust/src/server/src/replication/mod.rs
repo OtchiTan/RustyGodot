@@ -30,9 +30,9 @@ fn update_replication(
     replicated_nodes: Query<&ReplicatedNode>,
 ) {
     for replicated_node in replicated_nodes.iter() {
-        let message_header = MessageHeader::new(MessageType::Data, DataType::Replication);
+        let message_header = MessageHeader::init(MessageType::Data, DataType::Replication);
         let mut stream_writer = StreamWriter::new(vec![]);
-        stream_writer.write_u8(message_header.get_data());
+        stream_writer.write_serializable(message_header);
         stream_writer.write_u32(replicated_node.net_id);
         stream_writer.write_u32(replicated_node.type_id);
         stream_writer.write_f32(replicated_node.x);
@@ -58,8 +58,8 @@ fn on_destroy_entity(
 ) {
     if let Ok(replicated_node) = replicated_nodes.get(event.entity) {
         let mut stream_writer = StreamWriter::new(vec![]);
-        let message_header = MessageHeader::new(MessageType::Data, DataType::Despawn);
-        stream_writer.write_u8(message_header.get_data());
+        let message_header = MessageHeader::init(MessageType::Data, DataType::Despawn);
+        stream_writer.write_serializable(message_header);
         stream_writer.write_u32(replicated_node.net_id);
 
         for connected_client in connected_clients.iter() {

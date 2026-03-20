@@ -18,17 +18,6 @@ pub enum ConnectionState {
     Spurious,
 }
 
-impl ConnectionState {
-    fn to_string(self) -> String {
-        match self {
-            ConnectionState::NotConnected => "NotConnected".into(),
-            ConnectionState::Connecting => "Connecting".into(),
-            ConnectionState::Connected => "Connected".into(),
-            ConnectionState::Spurious => "Spurious".into(),
-        }
-    }
-}
-
 #[derive(GodotClass)]
 #[class(base=Node)]
 pub struct GDNetworkManager {
@@ -61,23 +50,23 @@ impl INode for GDNetworkManager {
                 Some((size, _)) => {
                     let buf = &mut buf[..size];
 
-                    let message_header = MessageHeader::from_data(buf[0]);
+                    let mut stream_reader = StreamReader::new(buf.to_vec());
+                    let mut message_header = MessageHeader::new();
+                    stream_reader.read_serializable(&mut message_header);
 
-                    match message_header.get_message_type() {
+                    match message_header.message_type {
                         MessageType::Helo => self.set_connection_state(ConnectionState::Connecting),
                         MessageType::Hsk => {
                             self.set_connection_state(ConnectionState::Connected);
-                            if let Some(slice) = buf.get(1..5) {
-                                let bytes: [u8; 4] = slice.try_into().unwrap();
-                                self.client_id = u32::from_le_bytes(bytes);
-                                godot_print!("ClientID : {:?}", self.client_id);
-
-                                let mut buffer: Vec<u8> = vec![];
-                                self.send_message(MessageType::Data, &mut buffer);
-                            }
+                            self.client_id = stream_reader.read_u32();
+                            godot_print!("ClientID : {:?}", self.client_id);
+                            let mut buffer: Vec<u8> = vec![];
+                            self.send_message(MessageType::Data, &mut buffer);
                         }
                         MessageType::Ping => self.set_connection_state(ConnectionState::Connected),
-                        MessageType::Data => self.handle_data(message_header, &buf[1..]),
+                        MessageType::Data => {
+                            self.handle_data(message_header, stream_reader.get_rest_buffer())
+                        }
                         MessageType::Bye => self.disconnect_socket(false),
                     }
                 }
@@ -109,12 +98,12 @@ impl INode for GDNetworkManager {
 
 impl GDNetworkManager {
     pub fn send_message(&self, message_type: MessageType, buffer: &mut Vec<u8>) {
-        let mut message_content: Vec<u8> =
-            vec![MessageHeader::new(message_type, DataType::Rpc).get_data()];
-        message_content.append(buffer);
+        let mut stream_writer = StreamWriter::new(vec![]);
+        stream_writer.write_serializable(MessageHeader::init(message_type, DataType::Rpc));
+        stream_writer.write_bytes(buffer);
 
         if let Some(socket) = self.socket.as_ref() {
-            match socket.send(SERVER_IP, message_content.as_slice()) {
+            match socket.send(SERVER_IP, stream_writer.get_data()) {
                 Ok(_) => {}
                 Err(e) => godot_print!("Error sending message: {}", e),
             }
@@ -171,7 +160,7 @@ impl GDNetworkManager {
 
     fn handle_data(&mut self, message_header: MessageHeader, buffer: &[u8]) {
         self.connection_timeout = 0.0;
-        match message_header.get_data_type() {
+        match message_header.data_type {
             DataType::None => {}
             DataType::Rpc => {}
             DataType::Replication => {
