@@ -1,4 +1,5 @@
 ﻿use crate::network_manager::GDNetworkManager;
+use crate::replicated_node::GDReplicatedNode;
 use common::input_packet::{Input, InputPacket};
 use common::message_header::MessageType;
 use common::stream_writer::StreamWriter;
@@ -15,6 +16,8 @@ pub struct GDInputManager {
 
     network_manager: Option<Gd<GDNetworkManager>>,
     input_packets: VecDeque<InputPacket>,
+    current_input: InputPacket,
+    net_id: u32,
 }
 
 #[godot_api]
@@ -24,7 +27,33 @@ impl INode for GDInputManager {
             base,
             network_manager: None,
             input_packets: VecDeque::new(),
+            current_input: InputPacket::new(),
+            net_id: 0,
         }
+    }
+
+    fn physics_process(&mut self, _delta: f64) {
+        if let Some(last_packet) = self.input_packets.iter().last() {
+            self.current_input.sequence = last_packet.sequence + 1;
+        }
+
+        self.input_packets.push_back(self.current_input.clone());
+
+        if self.input_packets.len() > 20 {
+            self.input_packets.pop_front();
+        }
+
+        if let Some(network_manager) = &mut self.network_manager {
+            let mut stream_writer = StreamWriter::new();
+            stream_writer.write_u32(self.net_id);
+            let vec_inputs = Vec::from(self.input_packets.clone());
+            stream_writer.write_serializable_vec(vec_inputs);
+            network_manager
+                .bind()
+                .send_message(MessageType::Data, &mut stream_writer.get_data().to_vec());
+        }
+
+        self.current_input.reset();
     }
 
     fn ready(&mut self) {
@@ -36,46 +65,28 @@ impl INode for GDInputManager {
                 .unwrap()
                 .cast(),
         );
+
+        if let Some(replicated_node) = self.base().get_parent() {
+            self.net_id = replicated_node.cast::<GDReplicatedNode>().bind().net_id;
+        }
     }
 }
 
 #[godot_api]
 impl GDInputManager {
     #[func]
-    pub fn send_input(&mut self, net_id: u32, direction: Vector2) {
-        let mut input_packet = InputPacket::new();
-
+    pub fn add_direction_input(&mut self, direction: Vector2) {
         if direction.y > 0.0 {
-            input_packet.add_input(Input::Up)
+            self.current_input.add_input(Input::Up)
         }
         if direction.y < 0.0 {
-            input_packet.add_input(Input::Down)
+            self.current_input.add_input(Input::Down)
         }
         if direction.x > 0.0 {
-            input_packet.add_input(Input::Right)
+            self.current_input.add_input(Input::Right)
         }
         if direction.x < 0.0 {
-            input_packet.add_input(Input::Left)
-        }
-
-        if let Some(last_packet) = self.input_packets.iter().last() {
-            input_packet.sequence = last_packet.sequence + 1;
-        }
-
-        self.input_packets.push_back(input_packet.clone());
-
-        if self.input_packets.len() > 20 {
-            self.input_packets.pop_front();
-        }
-
-        if let Some(network_manager) = &mut self.network_manager {
-            let mut stream_writer = StreamWriter::new();
-            stream_writer.write_u32(net_id);
-            let vec_inputs = Vec::from(self.input_packets.clone());
-            stream_writer.write_serializable_vec(vec_inputs);
-            network_manager
-                .bind()
-                .send_message(MessageType::Data, &mut stream_writer.get_data().to_vec());
+            self.current_input.add_input(Input::Left)
         }
     }
 }

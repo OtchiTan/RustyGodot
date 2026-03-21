@@ -34,6 +34,13 @@ impl InputPacket {
     pub fn read_input(&self, input: Input) -> bool {
         self.keys & 1u8 << (input as u8) != 0
     }
+
+    pub fn reset(&mut self) {
+        self.sequence = 0;
+        self.keys = 0;
+        self.aim_x = 0.0;
+        self.aim_y = 0.0;
+    }
 }
 
 impl Serializable for InputPacket {

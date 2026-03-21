@@ -24,6 +24,6 @@ region_rect = Rect2(2.5174522, 0.15011597, 10.96476, 16.043266)
 scale = Vector2(8, 8)
 shape = SubResource("CircleShape2D_0063d")
 
-[node name="GDInputManager" type="GDInputManager" parent="GDPlayer" unique_id=825383425]
+[node name="GDInputManager" type="GDInputManager" parent="." unique_id=825383425]
 
 [connection signal="deserialize" from="." to="GDPlayer" method="_on_boat_deserialize"]
