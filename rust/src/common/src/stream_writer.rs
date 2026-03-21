@@ -66,4 +66,11 @@ impl StreamWriter {
     pub fn write_serializable<T: Serializable>(&mut self, data: T) {
         data.serialize(self);
     }
+    
+    pub fn write_serializable_vec<T: Serializable>(&mut self, data: Vec<T>) {
+        self.write_u32(data.len() as u32);
+        for serializable in data {
+            self.write_serializable(serializable);
+        }
+    }
 }

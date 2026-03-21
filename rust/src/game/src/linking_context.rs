@@ -25,6 +25,10 @@ impl INode for GDLinkingContext {
             replicated_nodes: HashMap::new(),
         }
     }
+
+    fn ready(&mut self) {
+        self.base_mut().add_to_group("Network");
+    }
 }
 
 #[godot_api]

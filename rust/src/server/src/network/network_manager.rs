@@ -134,8 +134,7 @@ impl NetworkManager {
                 Some((size, socket_addr)) => {
                     let buf = &mut buf[..size];
                     let mut stream_reader = StreamReader::new(buf.to_vec());
-                    let mut message_header = MessageHeader::new();
-                    stream_reader.read_serializable(&mut message_header);
+                    let message_header: MessageHeader = stream_reader.read_serializable();
                     match message_header.message_type {
                         MessageType::Helo => {
                             self.handle_helo(socket_addr);

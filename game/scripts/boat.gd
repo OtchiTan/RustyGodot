@@ -1,11 +1,18 @@
 extends GDPlayer
 
-var speed :float = 300.0
-		
-func _physics_process(delta: float) -> void:
-	var direction = Input.get_vector("move_left", "move_right", "move_down", "move_up")
+@onready var input_manager: GDInputManager = $GDInputManager
+@onready var replicated_node: GDReplicatedNode = $".."
+
+func _physics_process(_delta: float) -> void:
+	var direction = Input.get_vector(
+		"move_left", 
+		"move_right", 
+		"move_down", 
+		"move_up"
+	)
 	
-	send_input(direction)
+	if is_locally_owned():
+		input_manager.send_input(replicated_node.net_id, direction)
 
 
 func _on_boat_deserialize(bytes: Array[int]) -> void:

@@ -7,6 +7,7 @@ use godot::prelude::{godot_api, GodotClass, INode};
 pub struct GDReplicatedNode {
     base: Base<Node>,
 
+    #[export]
     pub net_id: u32,
 }
 

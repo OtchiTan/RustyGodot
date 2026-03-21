@@ -78,8 +78,13 @@ impl Serializable for MessageHeader {
 }
 
 impl Deserializable for MessageHeader {
-    fn deserialize(&mut self, stream: &mut StreamReader) {
-        self.message_type = MessageType::try_from(stream.read_u8()).unwrap();
-        self.data_type = DataType::try_from(stream.read_u8()).unwrap();
+    fn deserialize(stream: &mut StreamReader) -> MessageHeader {
+        let message_type = MessageType::try_from(stream.read_u8()).unwrap();
+        let data_type = DataType::try_from(stream.read_u8()).unwrap();
+
+        MessageHeader {
+            message_type,
+            data_type,
+        }
     }
 }

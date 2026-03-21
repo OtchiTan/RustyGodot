@@ -1,5 +1,5 @@
-﻿use crate::stream_reader::StreamReader;
-use crate::stream_writer::StreamWriter;
+﻿use crate::stream_reader::{Deserializable, StreamReader};
+use crate::stream_writer::{Serializable, StreamWriter};
 
 #[derive(Debug, Clone)]
 pub struct InputPacket {
@@ -29,22 +29,27 @@ impl InputPacket {
         }
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut stream_writer = StreamWriter::new();
-
-        stream_writer.write_u32(self.net_id);
-        stream_writer.write_u32(self.sequence);
-        stream_writer.write_u8(self.keys);
-        stream_writer.write_f32(self.aim_x);
-        stream_writer.write_f32(self.aim_y);
-
-        stream_writer.get_data().to_vec()
+    pub fn add_input(&mut self, input: Input) {
+        self.keys = self.keys | 1u8 << (input as u8);
     }
 
-    pub fn deserialize(data: Vec<u8>) -> InputPacket {
-        let mut stream_reader = StreamReader::new(data);
+    pub fn read_input(&self, input: Input) -> bool {
+        self.keys & 1u8 << (input as u8) != 0
+    }
+}
 
+impl Serializable for InputPacket {
+    fn serialize(&self, stream: &mut StreamWriter) {
+        stream.write_u32(self.net_id);
+        stream.write_u32(self.sequence);
+        stream.write_u8(self.keys);
+        stream.write_f32(self.aim_x);
+        stream.write_f32(self.aim_y);
+    }
+}
 
+impl Deserializable for InputPacket {
+    fn deserialize(stream_reader: &mut StreamReader) -> Self {
         let net_id = stream_reader.read_u32();
         let sequence = stream_reader.read_u32();
         let keys = stream_reader.read_u8();
@@ -58,13 +63,5 @@ impl InputPacket {
             aim_x,
             aim_y,
         }
-    }
-
-    pub fn add_input(&mut self, input: Input) {
-        self.keys = self.keys | 1u8 << (input as u8);
-    }
-
-    pub fn read_input(&self, input: Input) -> bool {
-        self.keys & 1u8 << (input as u8) != 0
     }
 }

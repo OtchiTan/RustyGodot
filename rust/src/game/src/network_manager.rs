@@ -51,9 +51,7 @@ impl INode for GDNetworkManager {
                 Some((size, _)) => {
                     let buf = &mut buf[..size];
                     let mut stream_reader = StreamReader::new(buf.to_vec());
-                    let mut message_header = MessageHeader::new();
-                    stream_reader.read_serializable(&mut message_header);
-
+                    let message_header: MessageHeader = stream_reader.read_serializable();
                     match message_header.message_type {
                         MessageType::Helo => self.set_connection_state(ConnectionState::Connecting),
                         MessageType::Hsk => {
@@ -95,6 +93,8 @@ impl INode for GDNetworkManager {
     }
 
     fn ready(&mut self) {
+        self.base_mut().add_to_group("Network");
+        
         let socket = GameSocket::new("127.0.0.1:0");
 
         match socket {
