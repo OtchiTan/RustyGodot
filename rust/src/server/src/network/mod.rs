@@ -31,7 +31,8 @@ fn poll(
                 client_addr,
                 message_header,
                 buffer,
-                replicated_nodes
+                replicated_nodes,
+                replication_manager
             );
         }
         None => {}

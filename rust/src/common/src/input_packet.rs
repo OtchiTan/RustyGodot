@@ -3,7 +3,6 @@ use crate::stream_writer::{Serializable, StreamWriter};
 
 #[derive(Debug, Clone)]
 pub struct InputPacket {
-    pub net_id: u32,
     pub sequence: u32,
     pub keys: u8, // bitfield : bit0=haut, bit1=bas, bit2=gauche, bit3=droite
     pub aim_x: f32,
@@ -19,9 +18,8 @@ pub enum Input {
 }
 
 impl InputPacket {
-    pub fn new(net_id: u32) -> Self {
+    pub fn new() -> Self {
         Self {
-            net_id,
             sequence: 0,
             keys: 0,
             aim_x: 0.0,
@@ -40,7 +38,6 @@ impl InputPacket {
 
 impl Serializable for InputPacket {
     fn serialize(&self, stream: &mut StreamWriter) {
-        stream.write_u32(self.net_id);
         stream.write_u32(self.sequence);
         stream.write_u8(self.keys);
         stream.write_f32(self.aim_x);
@@ -50,14 +47,12 @@ impl Serializable for InputPacket {
 
 impl Deserializable for InputPacket {
     fn deserialize(stream_reader: &mut StreamReader) -> Self {
-        let net_id = stream_reader.read_u32();
         let sequence = stream_reader.read_u32();
         let keys = stream_reader.read_u8();
         let aim_x = stream_reader.read_f32();
         let aim_y = stream_reader.read_f32();
 
         Self {
-            net_id,
             sequence,
             keys,
             aim_x,

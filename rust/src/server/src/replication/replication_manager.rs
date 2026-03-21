@@ -9,6 +9,7 @@ pub struct ReplicationManager {
 pub struct ClientEntityLink {
     pub client: Entity,
     pub possessed_entity: HashMap<u32, Entity>,
+    pub last_sequence: u32,
 }
 
 impl ClientEntityLink {
@@ -16,6 +17,7 @@ impl ClientEntityLink {
         Self {
             client,
             possessed_entity: HashMap::new(),
+            last_sequence: 0,
         }
     }
 }

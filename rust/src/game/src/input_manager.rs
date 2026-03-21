@@ -5,7 +5,7 @@ use common::stream_writer::StreamWriter;
 use godot::builtin::Vector2;
 use godot::classes::Node;
 use godot::obj::{Base, Gd, WithBaseField};
-use godot::prelude::{godot_api, godot_print, GodotClass, INode};
+use godot::prelude::{godot_api, GodotClass, INode};
 use std::collections::VecDeque;
 
 #[derive(GodotClass)]
@@ -43,7 +43,7 @@ impl INode for GDInputManager {
 impl GDInputManager {
     #[func]
     pub fn send_input(&mut self, net_id: u32, direction: Vector2) {
-        let mut input_packet = InputPacket::new(net_id);
+        let mut input_packet = InputPacket::new();
 
         if direction.y > 0.0 {
             input_packet.add_input(Input::Up)
@@ -70,9 +70,8 @@ impl GDInputManager {
 
         if let Some(network_manager) = &mut self.network_manager {
             let mut stream_writer = StreamWriter::new();
+            stream_writer.write_u32(net_id);
             let vec_inputs = Vec::from(self.input_packets.clone());
-            godot_print!("Stream Length: {}", vec_inputs.len());
-            godot_print!("First packet : {}", vec_inputs.first().unwrap().sequence);
             stream_writer.write_serializable_vec(vec_inputs);
             network_manager
                 .bind()
