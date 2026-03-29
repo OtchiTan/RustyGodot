@@ -1,6 +1,7 @@
-﻿use crate::replication::replicated_node::ReplicatedNode;
+﻿use crate::replication::replicated_nodes::player::Player;
 use crate::replication::replication_manager::{ClientEntityLink, ReplicationManager};
 use bevy::prelude::*;
+use glm::Vec2;
 
 #[derive(EntityEvent)]
 pub struct ClientConnected {
@@ -14,12 +15,15 @@ pub fn on_client_connected(
     mut replication_manager: ResMut<ReplicationManager>,
 ) {
     let player_net_id = rand::random();
-    let player = ReplicatedNode {
+    let position = Vec2::new(
+        rand::random_range(20.0..180.0) * 16.0,
+        rand::random_range(20.0..90.0) * 16.0,
+    );
+    let player = Player {
         net_id: player_net_id,
         type_id: 0,
         owner_id: on_connected.client_net_id,
-        x: rand::random_range(20.0..180.0) * 16.0,
-        y: rand::random_range(20.0..90.0) * 16.0,
+        position,
     };
 
     let player_entity = commands.spawn(player).id();

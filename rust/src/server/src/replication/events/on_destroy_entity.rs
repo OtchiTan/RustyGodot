@@ -3,7 +3,7 @@ use common::message_header::{DataType, MessageHeader, MessageType};
 use common::stream_writer::StreamWriter;
 use crate::network::connected_client::ConnectedClient;
 use crate::network::network_manager::NetworkManager;
-use crate::replication::replicated_node::ReplicatedNode;
+use crate::replication::replicated_nodes::player::Player;
 
 #[derive(EntityEvent)]
 pub struct DestroyEntity {
@@ -14,7 +14,7 @@ pub fn on_destroy_entity(
     event: On<DestroyEntity>,
     connected_clients: Query<&ConnectedClient>,
     network_manager: Res<NetworkManager>,
-    replicated_nodes: Query<&ReplicatedNode>,
+    replicated_nodes: Query<&Player>,
     mut commands: Commands,
 ) {
     if let Ok(replicated_node) = replicated_nodes.get(event.entity) {

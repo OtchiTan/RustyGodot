@@ -1,6 +1,6 @@
 ﻿use crate::network::connected_client::ConnectedClient;
 use crate::network::network_manager::NetworkManager;
-use crate::replication::replicated_node::ReplicatedNode;
+use crate::replication::replicated_nodes::player::Player;
 use bevy::prelude::{Entity, Query, Res, Resource};
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::stream_writer::StreamWriter;
@@ -30,17 +30,13 @@ impl ClientEntityLink {
 pub fn update_replication(
     network_manager: Res<NetworkManager>,
     clients: Query<&ConnectedClient>,
-    replicated_nodes: Query<&ReplicatedNode>,
+    replicated_nodes: Query<&Player>,
 ) {
-    for replicated_node in replicated_nodes.iter() {
+    for player in replicated_nodes.iter() {
         let message_header = MessageHeader::init(MessageType::Data, DataType::Replication);
         let mut stream_writer = StreamWriter::new();
         stream_writer.write_serializable(message_header);
-        stream_writer.write_u32(replicated_node.net_id);
-        stream_writer.write_u32(replicated_node.type_id);
-        stream_writer.write_f32(replicated_node.x);
-        stream_writer.write_f32(replicated_node.y);
-        stream_writer.write_u32(replicated_node.owner_id);
+        stream_writer.write_serializable_ref(player);
         for client in clients.iter() {
             network_manager.send_data(&client.address, stream_writer.get_data());
         }

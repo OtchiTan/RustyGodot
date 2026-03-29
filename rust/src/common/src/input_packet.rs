@@ -1,5 +1,6 @@
 ﻿use crate::stream_reader::{Deserializable, StreamReader};
 use crate::stream_writer::{Serializable, StreamWriter};
+use glm::Vec2;
 
 #[derive(Debug, Clone)]
 pub struct InputPacket {
@@ -33,6 +34,28 @@ impl InputPacket {
 
     pub fn read_input(&self, input: Input) -> bool {
         self.keys & 1u8 << (input as u8) != 0
+    }
+
+    pub fn read_axis(&self, negative: Input, positive: Input) -> f32 {
+        if self.read_input(negative) {
+            -1.0
+        } else if self.read_input(positive) {
+            1.0
+        } else {
+            0.0
+        }
+    }
+
+    pub fn read_vector(
+        &self,
+        x_positive: Input,
+        x_negative: Input,
+        y_positive: Input,
+        y_negative: Input,
+    ) -> Vec2 {
+        let x = self.read_axis(x_negative, x_positive);
+        let y = self.read_axis(y_negative, y_positive);
+        Vec2::new(x, y)
     }
 
     pub fn reset(&mut self) {

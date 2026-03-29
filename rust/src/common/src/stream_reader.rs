@@ -1,4 +1,6 @@
-﻿pub trait Deserializable {
+﻿use glm::Vec2;
+
+pub trait Deserializable {
     fn deserialize(stream_reader: &mut StreamReader) -> Self;
 }
 
@@ -91,6 +93,15 @@ impl StreamReader {
         let data = &self.buffer[self.cursor..self.cursor + 8];
         self.cursor += 8;
         f64::from_le_bytes(data.try_into().unwrap())
+    }
+
+    pub fn read_vec2(&mut self) -> Vec2 {
+        if self.cursor >= self.buffer.len() {
+            return Vec2::new(0.0, 0.0);
+        }
+        let x = self.read_f32();
+        let y = self.read_f32();
+        Vec2::new(x, y)
     }
 
     pub fn read_serializable<T: Deserializable>(&mut self) -> T {

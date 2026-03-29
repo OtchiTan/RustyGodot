@@ -1,4 +1,6 @@
-﻿pub trait Serializable {
+﻿use glm::Vec2;
+
+pub trait Serializable {
     fn serialize(&self, stream: &mut StreamWriter);
 }
 
@@ -59,6 +61,11 @@ impl StreamWriter {
             .extend_from_slice(f64::to_le_bytes(data).as_ref());
     }
 
+    pub fn write_vec2(&mut self, vec: Vec2) {
+        self.write_f32(vec.x);
+        self.write_f32(vec.y);
+    }
+
     pub fn write_bytes(&mut self, data: &[u8]) {
         self.buffer.extend_from_slice(data);
     }
@@ -67,6 +74,10 @@ impl StreamWriter {
         data.serialize(self);
     }
     
+    pub fn write_serializable_ref<T: Serializable>(&mut self, data: &T) {
+        data.serialize(self);
+    }
+
     pub fn write_serializable_vec<T: Serializable>(&mut self, data: Vec<T>) {
         self.write_u32(data.len() as u32);
         for serializable in data {
