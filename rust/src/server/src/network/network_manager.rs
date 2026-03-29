@@ -1,7 +1,7 @@
 ﻿use crate::network::connected_client::ConnectedClient;
-use crate::replication::DestroyEntity;
-use crate::replication::replicated_node::ReplicatedNode;
-use crate::replication::replication_manager::{ClientEntityLink, ReplicationManager};
+use crate::replication::events::on_client_connected::ClientConnected;
+use crate::replication::events::on_client_disconnected::ClientDisconnected;
+use crate::rpc::rpc_manager::RpcReceived;
 use bevy::prelude::{Commands, Resource};
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::stream_reader::StreamReader;
@@ -32,59 +32,29 @@ impl NetworkManager {
     fn handle_helo(&self, addr: String) {
         let mut stream_writer = StreamWriter::new();
         stream_writer.write_serializable(MessageHeader::init(MessageType::Helo, DataType::None));
-        if let Some(socket) = self.socket.as_ref() {
-            println!("Send helo to {}", addr);
-            socket
-                .send(&addr, stream_writer.get_data())
-                .expect("Error Message sending");
-        }
+        self.send_data(&addr, stream_writer.get_data());
     }
 
-    fn handle_hsk(
-        &self,
-        addr: String,
-        mut commands: Commands,
-        replication_manager: &mut ReplicationManager,
-    ) {
-        if let Some(socket) = self.socket.as_ref() {
-            let client_net_id = rand::random();
-            let connected_client = commands
-                .spawn(ConnectedClient {
-                    _net_id: client_net_id,
-                    address: addr.clone(),
-                })
-                .id();
+    fn handle_hsk(&self, addr: String, mut commands: Commands) {
+        let client_net_id = rand::random();
+        let connected_client = commands
+            .spawn(ConnectedClient {
+                _net_id: client_net_id,
+                address: addr.clone(),
+            })
+            .id();
 
-            let player_net_id = rand::random();
-            let player = ReplicatedNode {
-                net_id: player_net_id,
-                type_id: 0,
-                owner_id: client_net_id,
-                x: rand::random_range(20.0..180.0) * 16.0,
-                y: rand::random_range(20.0..90.0) * 16.0,
-            };
+        commands.trigger(ClientConnected {
+            entity: connected_client,
+            client_net_id,
+        });
 
-            let player_entity = commands.spawn(player).id();
+        let mut stream_writer = StreamWriter::new();
+        stream_writer.write_serializable(MessageHeader::init(MessageType::Hsk, DataType::None));
+        stream_writer.write_u32(client_net_id);
 
-            let mut client_entity = ClientEntityLink::new(connected_client);
-
-            client_entity
-                .possessed_entity
-                .insert(player_net_id, player_entity);
-
-            replication_manager
-                .client_entities
-                .insert(client_net_id, client_entity);
-
-            let mut stream_writer = StreamWriter::new();
-            stream_writer.write_serializable(MessageHeader::init(MessageType::Hsk, DataType::None));
-            stream_writer.write_u32(client_net_id);
-
-            println!("Send hsk to {}", addr);
-            socket
-                .send(&addr, stream_writer.get_data())
-                .expect("Error Message sending");
-        }
+        println!("Send hsk to {}", addr);
+        self.send_data(&addr, stream_writer.get_data())
     }
 
     fn handle_ping(&self, addr: String, buffer: &[u8]) {
@@ -98,75 +68,38 @@ impl NetworkManager {
                 .as_millis() as u64,
         );
 
-        if let Some(socket) = self.socket.as_ref() {
-            socket
-                .send(&addr, stream_writer.get_data())
-                .expect("Error Message sending");
-        }
+        self.send_data(&addr, stream_writer.get_data())
     }
 
-    fn handle_bye(
-        &self,
-        buffer: Vec<u8>,
-        mut commands: Commands,
-        replication_manager: &mut ReplicationManager,
-    ) {
-        let mut stream_reader = StreamReader::new(buffer);
+    fn handle_bye(&self, mut stream_reader: StreamReader, mut commands: Commands) {
         let net_id = stream_reader.read_u32();
 
-        if let Some(client) = replication_manager.client_entities.get(&net_id) {
-            for entity in client.possessed_entity.values() {
-                commands.trigger(DestroyEntity { entity: *entity });
-            }
-            commands.entity(client.client).despawn();
-        }
+        commands.trigger(ClientDisconnected {
+            client_net_id: net_id,
+        });
     }
 
-    pub fn poll(
-        &self,
-        commands: Commands,
-        replication_manager: &mut ReplicationManager,
-    ) -> Option<(String, MessageHeader, Vec<u8>)> {
+    pub fn poll(&self, mut commands: Commands) {
         let mut buf = [0; 1500];
-
         if let Some(socket) = self.socket.as_ref() {
-            return match socket.poll(&mut buf) {
+            match socket.poll(&mut buf) {
                 Some((size, socket_addr)) => {
                     let buf = &mut buf[..size];
                     let mut stream_reader = StreamReader::new(buf.to_vec());
                     let message_header: MessageHeader = stream_reader.read_serializable();
                     match message_header.message_type {
-                        MessageType::Helo => {
-                            self.handle_helo(socket_addr);
-                            None
-                        }
-                        MessageType::Hsk => {
-                            self.handle_hsk(socket_addr, commands, replication_manager);
-                            None
-                        }
+                        MessageType::Helo => self.handle_helo(socket_addr),
+                        MessageType::Hsk => self.handle_hsk(socket_addr, commands),
                         MessageType::Ping => {
-                            self.handle_ping(socket_addr, stream_reader.get_rest_buffer());
-                            None
+                            self.handle_ping(socket_addr, stream_reader.get_rest_buffer())
                         }
-                        MessageType::Data => Some((
-                            socket_addr,
-                            message_header,
-                            stream_reader.get_rest_buffer().to_vec(),
-                        )),
-                        MessageType::Bye => {
-                            self.handle_bye(
-                                stream_reader.get_rest_buffer().to_vec(),
-                                commands,
-                                replication_manager,
-                            );
-                            None
-                        }
+                        MessageType::Data => commands.trigger(RpcReceived { stream_reader }),
+                        MessageType::Bye => self.handle_bye(stream_reader, commands),
                     }
                 }
-                None => None,
+                None => {}
             };
         }
-        None
     }
 
     pub fn send_data(&self, addr: &String, buffer: &[u8]) {

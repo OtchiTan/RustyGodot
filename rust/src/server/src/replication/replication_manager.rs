@@ -1,4 +1,9 @@
-﻿use bevy::prelude::{Entity, Resource};
+﻿use crate::network::connected_client::ConnectedClient;
+use crate::network::network_manager::NetworkManager;
+use crate::replication::replicated_node::ReplicatedNode;
+use bevy::prelude::{Entity, Query, Res, Resource};
+use common::message_header::{DataType, MessageHeader, MessageType};
+use common::stream_writer::StreamWriter;
 use std::collections::HashMap;
 
 #[derive(Resource)]
@@ -18,6 +23,26 @@ impl ClientEntityLink {
             client,
             possessed_entity: HashMap::new(),
             last_sequence: 0,
+        }
+    }
+}
+
+pub fn update_replication(
+    network_manager: Res<NetworkManager>,
+    clients: Query<&ConnectedClient>,
+    replicated_nodes: Query<&ReplicatedNode>,
+) {
+    for replicated_node in replicated_nodes.iter() {
+        let message_header = MessageHeader::init(MessageType::Data, DataType::Replication);
+        let mut stream_writer = StreamWriter::new();
+        stream_writer.write_serializable(message_header);
+        stream_writer.write_u32(replicated_node.net_id);
+        stream_writer.write_u32(replicated_node.type_id);
+        stream_writer.write_f32(replicated_node.x);
+        stream_writer.write_f32(replicated_node.y);
+        stream_writer.write_u32(replicated_node.owner_id);
+        for client in clients.iter() {
+            network_manager.send_data(&client.address, stream_writer.get_data());
         }
     }
 }
