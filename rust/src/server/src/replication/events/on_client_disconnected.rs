@@ -1,7 +1,6 @@
-﻿
+﻿use crate::replication::events::on_destroy_entity::DestroyEntity;
 use crate::replication::replication_manager::ReplicationManager;
 use bevy::prelude::*;
-use crate::replication::events::on_destroy_entity::DestroyEntity;
 
 #[derive(Event)]
 pub struct ClientDisconnected {

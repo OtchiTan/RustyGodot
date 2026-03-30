@@ -5,12 +5,12 @@ use common::input_packet::InputPacket;
 use common::stream_reader::StreamReader;
 
 #[derive(Event)]
-pub struct RpcReceived {
+pub struct InputReceived {
     pub stream_reader: StreamReader,
 }
 
-pub fn handle_rpc(
-    mut on_rpc_received: On<RpcReceived>,
+pub fn handle_input(
+    mut on_rpc_received: On<InputReceived>,
     mut players: Query<&mut Player>,
     mut replication_manager: ResMut<ReplicationManager>,
 ) {
