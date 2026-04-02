@@ -32,13 +32,15 @@ pub fn update_replication(
     clients: Query<&ConnectedClient>,
     replicated_nodes: Query<&Player>,
 ) {
+    let message_header = MessageHeader::init(MessageType::Data, DataType::Replication);
+    let mut stream_writer = StreamWriter::new();
+    stream_writer.write_serializable(message_header);
+
     for player in replicated_nodes.iter() {
-        let message_header = MessageHeader::init(MessageType::Data, DataType::Replication);
-        let mut stream_writer = StreamWriter::new();
-        stream_writer.write_serializable(message_header);
         stream_writer.write_serializable_ref(player);
-        for client in clients.iter() {
-            network_manager.send_data(&client.address, stream_writer.get_data());
-        }
+    }
+
+    for client in clients.iter() {
+        network_manager.send_data(&client.address, stream_writer.get_data());
     }
 }

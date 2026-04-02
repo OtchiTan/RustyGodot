@@ -38,28 +38,38 @@ impl GDLinkingContext {
     pub fn handle_snapshot(&mut self, buffer: Vec<u8>) {
         let mut sr = GDStreamReader::new_gd();
         sr.bind_mut().stream_reader = Some(StreamReader::new(buffer.to_vec()));
-        let net_id = sr
-            .bind_mut()
-            .stream_reader
-            .as_mut()
-            .expect("Check just before")
-            .read_u32();
-        let type_id = sr
-            .bind_mut()
-            .stream_reader
-            .as_mut()
-            .expect("Check just before")
-            .read_u32();
 
-        let replicated_node = self.get_replicated_node(net_id);
-        if let Some(replicated_node) = replicated_node {
-            replicated_node.signals().deserialize().emit(&sr);
-        } else {
-            self.spawn(net_id, type_id, sr);
+        while sr
+            .bind()
+            .stream_reader
+            .as_ref()
+            .expect("Check just before")
+            .remain_data()
+        {
+            let net_id = sr
+                .bind_mut()
+                .stream_reader
+                .as_mut()
+                .expect("Check just before")
+                .read_u32();
+            let type_id = sr
+                .bind_mut()
+                .stream_reader
+                .as_mut()
+                .expect("Check just before")
+                .read_u32();
+
+            let replicated_node = self.get_replicated_node(net_id);
+
+            if let Some(replicated_node) = replicated_node {
+                replicated_node.signals().deserialize().emit(&sr);
+            } else {
+                self.spawn(net_id, type_id, &sr);
+            }
         }
     }
 
-    pub fn spawn(&mut self, net_id: u32, type_id: u32, stream_reader: Gd<GDStreamReader>) {
+    pub fn spawn(&mut self, net_id: u32, type_id: u32, stream_reader: &Gd<GDStreamReader>) {
         if let Some(scene) = &self.scenes_links.get(type_id as usize) {
             let mut replicated_node = scene.instantiate_as::<GDReplicatedNode>();
 
@@ -70,7 +80,7 @@ impl GDLinkingContext {
 
             self.base_mut().add_child(&replicated_node);
 
-            replicated_node.signals().deserialize().emit(&stream_reader);
+            replicated_node.signals().deserialize().emit(stream_reader);
         }
     }
 
