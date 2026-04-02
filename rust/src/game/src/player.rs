@@ -1,5 +1,5 @@
 ﻿use crate::network_manager::GDNetworkManager;
-use common::stream_reader::StreamReader;
+use crate::stream_reader::GDStreamReader;
 use godot::builtin::Vector2;
 use godot::classes::{CharacterBody2D, ICharacterBody2D};
 use godot::obj::{Base, Gd, WithBaseField};
@@ -47,13 +47,21 @@ impl GDPlayer {
     }
 
     #[func]
-    pub fn deserialize_bytes(&mut self, bytes: Vec<u8>) {
-        let mut stream_reader = StreamReader::new(bytes);
-        let x = stream_reader.read_f32();
-        let y = stream_reader.read_f32();
-        self.owner_id = stream_reader.read_u32();
+    pub fn deserialize_bytes(&mut self, mut sr: Gd<GDStreamReader>) {
+        let position = sr
+            .bind_mut()
+            .stream_reader
+            .as_mut()
+            .expect("Check just before")
+            .read_vec2();
+        self.owner_id = sr
+            .bind_mut()
+            .stream_reader
+            .as_mut()
+            .expect("Check just before")
+            .read_u32();
 
-        let new_position = Vector2::new(x, y);
-        self.base_mut().set_position(new_position);
+        self.base_mut()
+            .set_position(Vector2::new(position.x, position.y));
     }
 }

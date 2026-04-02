@@ -13,6 +13,5 @@ func _process(_delta: float) -> void:
 	if is_locally_owned():
 		input_manager.add_direction_input(direction)
 
-func _on_boat_deserialize(bytes: Array[int]) -> void:
-	deserialize_bytes(bytes)
-	pass
+func _on_boat_deserialize(stream_reader: GDStreamReader) -> void:
+	deserialize_bytes(stream_reader)
