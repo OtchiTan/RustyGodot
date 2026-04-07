@@ -1,6 +1,6 @@
 ﻿use crate::network_manager::GDNetworkManager;
 use crate::replicated_node::GDReplicatedNode;
-use common::input_packet::{Input, InputPacket};
+use common::input_packet::{Input, InputBuffer, InputPacket};
 use common::message_header::MessageType;
 use common::stream_writer::StreamWriter;
 use godot::builtin::Vector2;
@@ -33,21 +33,21 @@ impl INode for GDInputManager {
     }
 
     fn physics_process(&mut self, _delta: f64) {
-        if let Some(last_packet) = self.input_packets.iter().last() {
-            self.current_input.sequence = last_packet.sequence + 1;
-        }
-
-        self.input_packets.push_back(self.current_input.clone());
-
-        if self.input_packets.len() > 20 {
-            self.input_packets.pop_front();
-        }
-
         if let Some(network_manager) = &mut self.network_manager {
+            self.current_input.sequence = network_manager.bind().server_frame;
+
+            self.input_packets.push_back(self.current_input.clone());
+
+            if self.input_packets.len() > 20 {
+                self.input_packets.pop_front();
+            }
+
             let mut stream_writer = StreamWriter::new();
-            stream_writer.write_u32(self.net_id);
-            let vec_inputs = Vec::from(self.input_packets.clone());
-            stream_writer.write_serializable_vec(vec_inputs);
+            let input_buffer = InputBuffer {
+                node_id: self.net_id,
+                packets: Vec::from(self.input_packets.clone()),
+            };
+            stream_writer.write_serializable(input_buffer);
             network_manager
                 .bind()
                 .send_message(MessageType::Data, &mut stream_writer.get_data().to_vec());

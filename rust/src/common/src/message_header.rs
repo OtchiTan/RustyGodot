@@ -13,7 +13,7 @@ pub enum MessageType {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DataType {
     None = 0,
-    Rpc = 1,
+    Input = 1,
     Replication = 2,
     Despawn = 3,
 }
@@ -62,7 +62,7 @@ impl TryFrom<u8> for DataType {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(DataType::None),
-            1 => Ok(DataType::Rpc),
+            1 => Ok(DataType::Input),
             2 => Ok(DataType::Replication),
             3 => Ok(DataType::Despawn),
             _ => Err(EnumError),

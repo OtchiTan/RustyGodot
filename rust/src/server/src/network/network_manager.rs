@@ -1,10 +1,11 @@
-﻿use crate::network::connected_client::ConnectedClient;
-use crate::network::{PingReceived, PollEvent};
+﻿use crate::network::PingReceived;
+use crate::network::connected_client::ConnectedClient;
 use crate::replication::events::on_client_connected::ClientConnected;
 use crate::replication::events::on_client_disconnected::ClientDisconnected;
-use crate::rpc::rpc_manager::InputReceived;
-use bevy::prelude::{Resource, World};
+use bevy::prelude::{Commands, Resource};
+use common::input_packet::InputBuffer;
 use common::message_header::{DataType, MessageHeader, MessageType};
+use common::ping_request::PingRequest;
 use common::stream_reader::StreamReader;
 use common::stream_writer::StreamWriter;
 use snl::GameSocket;
@@ -29,16 +30,15 @@ impl NetworkManager {
         }
     }
 
-    fn handle_helo(&self, addr: String) -> PollEvent {
+    fn handle_helo(&self, addr: String) {
         let mut stream_writer = StreamWriter::new();
         stream_writer.write_serializable(MessageHeader::init(MessageType::Helo, DataType::None));
         self.send_data(&addr, stream_writer.get_data());
-        PollEvent::None
     }
 
-    fn handle_hsk(&self, addr: String, world: &mut World) -> PollEvent {
+    fn handle_hsk(&self, addr: String, commands: &mut Commands) {
         let client_net_id = rand::random();
-        let connected_client = world
+        let connected_client = commands
             .spawn(ConnectedClient {
                 net_id: client_net_id,
                 address: addr.clone(),
@@ -57,51 +57,57 @@ impl NetworkManager {
 
         println!("Send hsk to {}", addr);
         self.send_data(&addr, stream_writer.get_data());
-        PollEvent::Connected(client_connected)
+        commands.trigger(client_connected);
     }
 
-    fn handle_ping(&self, address: String, mut stream_reader: StreamReader) -> PollEvent {
-        let client_time = stream_reader.read_u64();
+    fn handle_ping(
+        &self,
+        address: String,
+        mut stream_reader: StreamReader,
+        commands: &mut Commands,
+    ) {
+        let ping_request: PingRequest = stream_reader.read_serializable();
 
-        PollEvent::Ping(PingReceived {
-            client_time,
+        commands.trigger(PingReceived {
+            ping_request,
             address,
         })
     }
 
-    fn handle_data(&self, stream_reader: StreamReader, message_header: MessageHeader) -> PollEvent {
-        if message_header.data_type == DataType::Rpc {
-            return PollEvent::Input(InputReceived { stream_reader });
-        }
-        PollEvent::None
-    }
-
-    fn handle_bye(&self, mut stream_reader: StreamReader) -> PollEvent {
+    fn handle_bye(&self, mut stream_reader: StreamReader, commands: &mut Commands) {
         let net_id = stream_reader.read_u32();
 
-        PollEvent::Disconnected(ClientDisconnected {
+        commands.trigger(ClientDisconnected {
             client_net_id: net_id,
         })
     }
 
-    pub fn poll(&self, world: &mut World) -> PollEvent {
-        let mut buf = [0; 1500];
-        if let Some(socket) = self.socket.as_ref() {
-            if let Some((size, socket_addr)) = socket.poll(&mut buf) {
-                let buf = &mut buf[..size];
-                let mut stream_reader = StreamReader::new(buf.to_vec());
-                let message_header: MessageHeader = stream_reader.read_serializable();
-                return match message_header.message_type {
-                    MessageType::Helo => self.handle_helo(socket_addr),
-                    MessageType::Hsk => self.handle_hsk(socket_addr, world),
-                    MessageType::Ping => self.handle_ping(socket_addr, stream_reader),
-                    MessageType::Data => self.handle_data(stream_reader, message_header),
-                    MessageType::Bye => self.handle_bye(stream_reader),
-                };
+    pub fn poll(&self, mut commands: Commands) -> Vec<InputBuffer> {
+        let mut input_buffers = Vec::new();
+
+        loop {
+            let mut buf = [0; 1500];
+            if let Some(socket) = self.socket.as_ref() {
+                if let Some((size, socket_addr)) = socket.poll(&mut buf) {
+                    let buf = &mut buf[..size];
+                    let mut stream_reader = StreamReader::new(buf.to_vec());
+                    let message_header: MessageHeader = stream_reader.read_serializable();
+                    match message_header.message_type {
+                        MessageType::Helo => self.handle_helo(socket_addr),
+                        MessageType::Hsk => self.handle_hsk(socket_addr, &mut commands),
+                        MessageType::Ping => {
+                            self.handle_ping(socket_addr, stream_reader, &mut commands)
+                        }
+                        MessageType::Data => input_buffers.push(stream_reader.read_serializable()),
+                        MessageType::Bye => self.handle_bye(stream_reader, &mut commands),
+                    };
+                } else {
+                    break;
+                }
             }
         }
 
-        PollEvent::None
+        input_buffers
     }
 
     pub fn send_data(&self, addr: &String, buffer: &[u8]) {

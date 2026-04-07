@@ -4,7 +4,7 @@ mod rpc;
 
 use crate::network::NetworkPlugin;
 use crate::replication::ReplicationPlugin;
-use crate::rpc::RpcPlugin;
+use crate::rpc::InputPlugin;
 use bevy::MinimalPlugins;
 use bevy::app::App;
 
@@ -15,6 +15,6 @@ fn main() {
         .add_plugins(MinimalPlugins)
         .add_plugins(NetworkPlugin)
         .add_plugins(ReplicationPlugin)
-        .add_plugins(RpcPlugin)
+        .add_plugins(InputPlugin)
         .run();
 }

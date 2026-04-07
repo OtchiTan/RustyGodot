@@ -5,7 +5,7 @@ use godot::classes::{INode, Node, PackedScene};
 use godot::obj::NewGd;
 use godot::obj::{Base, Gd, WithBaseField};
 use godot::prelude::{godot_api, Array, GodotClass};
-use std::collections::HashMap;
+use std::collections::{HashMap};
 
 #[derive(GodotClass)]
 #[class(base=Node)]

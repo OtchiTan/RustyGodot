@@ -1,14 +1,14 @@
 ﻿use crate::replication::events::on_client_connected::on_client_connected;
 use crate::replication::events::on_client_disconnected::on_client_disconnected;
 use crate::replication::events::on_destroy_entity::on_destroy_entity;
-use crate::replication::replication_manager::{update_replication, ReplicationManager};
+use crate::replication::replication_manager::{ReplicationManager, update_replication};
 use bevy::app::{App, FixedUpdate, Plugin};
 use bevy::prelude::{Fixed, Time};
 use std::collections::HashMap;
 
 pub mod events;
-pub mod replication_manager;
 pub mod replicated_nodes;
+pub mod replication_manager;
 
 pub struct ReplicationPlugin;
 

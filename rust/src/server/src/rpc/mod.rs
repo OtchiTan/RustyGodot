@@ -1,12 +1,12 @@
-﻿use crate::rpc::rpc_manager::handle_input;
+﻿use crate::rpc::input_manager::InputManager;
 use bevy::app::{App, Plugin};
 
-pub mod rpc_manager;
+pub mod input_manager;
 
-pub struct RpcPlugin;
+pub struct InputPlugin;
 
-impl Plugin for RpcPlugin {
+impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(handle_input);
+        app.insert_resource(InputManager { server_frame: 0 });
     }
 }

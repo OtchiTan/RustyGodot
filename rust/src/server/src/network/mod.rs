@@ -1,12 +1,13 @@
 ﻿use crate::SERVER_IP;
 use crate::network::connected_client::ConnectedClient;
 use crate::network::network_manager::NetworkManager;
-use crate::replication::events::on_client_connected::ClientConnected;
 use crate::replication::events::on_client_disconnected::ClientDisconnected;
-use crate::rpc::rpc_manager::InputReceived;
-use bevy::app::{App, Plugin, Update};
+use crate::replication::replicated_nodes::player::Player;
+use crate::rpc::input_manager::InputManager;
+use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 use common::message_header::{DataType, MessageHeader, MessageType};
+use common::ping_request::{PingRequest, PingResponse};
 use common::stream_writer::StreamWriter;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -19,7 +20,8 @@ impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(NetworkManager::new(SERVER_IP))
             .add_observer(on_ping_received)
-            .add_systems(Update, poll)
+            .insert_resource(Time::<Fixed>::from_hz(30.0))
+            .add_systems(FixedUpdate, poll)
             .insert_resource(Time::<Fixed>::from_hz(1.0))
             .add_systems(FixedUpdate, handle_timeout);
     }
@@ -34,40 +36,27 @@ fn handle_timeout(connected_clients: Query<&ConnectedClient>, mut commands: Comm
     for client in connected_clients.iter() {
         let rtt = Duration::from_millis(server_time - client.latest_ping).as_millis();
         if rtt > 300 {
-            println!("Timed out client {}", client.net_id);
-            commands.trigger(ClientDisconnected {
-                client_net_id: client.net_id,
-            })
+            //println!("Timed out client {}", client.net_id);
+            //commands.trigger(ClientDisconnected {
+            //    client_net_id: client.net_id,
+            //})
         }
     }
 }
 
-pub enum PollEvent {
-    None,
-    Ping(PingReceived),
-    Connected(ClientConnected),
-    Disconnected(ClientDisconnected),
-    Input(InputReceived),
-}
-
-fn poll(world: &mut World) {
-    let mut poll_event = PollEvent::None;
-    world.resource_scope(|world, network_manager: Mut<NetworkManager>| {
-        poll_event = network_manager.poll(world);
-    });
-
-    match poll_event {
-        PollEvent::None => {}
-        PollEvent::Ping(ping_received) => world.trigger(ping_received),
-        PollEvent::Connected(connected_client) => world.trigger(connected_client),
-        PollEvent::Disconnected(disconnected_client) => world.trigger(disconnected_client),
-        PollEvent::Input(input_received) => world.trigger(input_received),
-    }
+fn poll(
+    commands: Commands,
+    network_manager: ResMut<NetworkManager>,
+    players: Query<&mut Player>,
+    mut input_manager: ResMut<InputManager>,
+) {
+    let poll_events = network_manager.poll(commands);
+    input_manager.handle_input(poll_events, players);
 }
 
 #[derive(Event)]
 pub struct PingReceived {
-    client_time: u64,
+    ping_request: PingRequest,
     address: String,
 }
 
@@ -75,6 +64,7 @@ fn on_ping_received(
     on_ping_received: On<PingReceived>,
     network_manager: Res<NetworkManager>,
     mut connected_clients: Query<&mut ConnectedClient>,
+    input_manager: Res<InputManager>,
 ) {
     let server_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -90,8 +80,12 @@ fn on_ping_received(
 
     let mut stream_writer = StreamWriter::new();
     stream_writer.write_serializable(MessageHeader::init(MessageType::Ping, DataType::None));
-    stream_writer.write_u64(on_ping_received.client_time);
-    stream_writer.write_u64(server_time);
+    let ping_response = PingResponse {
+        time_client_request: on_ping_received.ping_request.time_client_request,
+        time_server_response: server_time,
+        server_frame: input_manager.server_frame,
+    };
+    stream_writer.write_serializable(ping_response);
 
     network_manager.send_data(&on_ping_received.address, stream_writer.get_data())
 }
