@@ -1,15 +1,15 @@
 mod network;
 mod replication;
-mod rpc;
+mod input;
 
 use crate::network::NetworkPlugin;
 use crate::replication::ReplicationPlugin;
-use crate::rpc::InputPlugin;
+use crate::input::InputPlugin;
 use bevy::MinimalPlugins;
 use bevy::app::App;
 
 const SERVER_IP: &str = "127.0.0.1:3630";
-const SERVER_FREQUENCY: f64 = 60.0;
+const SERVER_FREQUENCY: f64 = 30.0;
 
 fn main() {
     App::new()

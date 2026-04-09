@@ -1,4 +1,5 @@
-﻿use crate::replication::events::on_client_connected::{ClientConnected, on_client_connected};
+﻿use crate::SERVER_FREQUENCY;
+use crate::replication::events::on_client_connected::{ClientConnected, on_client_connected};
 use crate::replication::events::on_client_disconnected::{
     ClientDisconnected, on_client_disconnected,
 };
@@ -30,7 +31,7 @@ impl Plugin for ReplicationPlugin {
                 on_client_disconnected,
             ),
         )
-        .insert_resource(Time::<Fixed>::from_hz(30.0))
+        .insert_resource(Time::<Fixed>::from_hz(SERVER_FREQUENCY))
         .add_systems(FixedUpdate, handle_snapshots);
     }
 }

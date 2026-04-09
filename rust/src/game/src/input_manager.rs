@@ -34,7 +34,7 @@ impl INode for GDInputManager {
 
     fn physics_process(&mut self, _delta: f64) {
         if let Some(network_manager) = &mut self.network_manager {
-            self.current_input.sequence = network_manager.bind().server_frame;
+            self.current_input.sequence = network_manager.bind().get_server_frame();
 
             self.input_packets.push_back(self.current_input.clone());
 

@@ -1,7 +1,7 @@
 ﻿use crate::network::connected_client::ConnectedClient;
 use crate::network::network_manager::NetworkManager;
 use crate::replication::replicated_nodes::player::Player;
-use crate::rpc::input_manager::InputManager;
+use crate::input::input_manager::InputManager;
 use bevy::prelude::{Entity, Query, Res, Resource};
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::replicated_node::ReplicatedNode;

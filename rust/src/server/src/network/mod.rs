@@ -4,7 +4,7 @@ use crate::network::network_manager::NetworkManager;
 use crate::replication::events::on_client_connected::ClientConnected;
 use crate::replication::events::on_client_disconnected::ClientDisconnected;
 use crate::replication::replicated_nodes::player::Player;
-use crate::rpc::input_manager::InputManager;
+use crate::input::input_manager::InputManager;
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 use common::message_header::{DataType, MessageHeader, MessageType};

@@ -32,7 +32,7 @@ pub struct GDNetworkManager {
     ping_sent: u32,
     last_snapshot_handled: f64,
     snapshots: VecDeque<Snapshot>,
-    pub server_frame: u32,
+    server_frame: u32,
     last_time_since_ping: f64,
     server_frequency: f64,
 
@@ -99,8 +99,6 @@ impl INode for GDNetworkManager {
 
     fn physics_process(&mut self, delta: f64) {
         self.last_time_since_ping += delta;
-
-        self.server_frame += (self.last_time_since_ping / self.server_frequency) as u32;
 
         if self.last_time_since_ping > 1.0 {
             let mut stream_writer = StreamWriter::new();
@@ -252,5 +250,9 @@ impl GDNetworkManager {
         let net_id = stream_reader.read_u32();
 
         self.get_linking_context().bind_mut().despawn(net_id);
+    }
+
+    pub fn get_server_frame(&self) -> u32 {
+        self.server_frame + (self.last_time_since_ping / self.server_frequency) as u32
     }
 }

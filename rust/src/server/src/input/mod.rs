@@ -1,4 +1,4 @@
-﻿use crate::rpc::input_manager::InputManager;
+﻿use crate::input::input_manager::InputManager;
 use bevy::app::{App, Plugin};
 
 pub mod input_manager;
