@@ -5,7 +5,6 @@ mod player;
 mod linking_context;
 mod replicated_node;
 mod input_manager;
-mod stream_reader;
 
 struct MyExtension;
 

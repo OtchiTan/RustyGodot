@@ -32,8 +32,6 @@ impl Player {
 
 impl Serializable for Player {
     fn serialize(&self, stream: &mut StreamWriter) {
-        stream.write_u32(self.net_id);
-        stream.write_u32(self.type_id);
         stream.write_vec2(self.position);
         stream.write_u32(self.owner_id);
     }

@@ -1,7 +1,6 @@
 ﻿use godot::classes::Node;
 use godot::obj::Base;
-use godot::prelude::{godot_api, GodotClass, INode, Gd};
-use crate::stream_reader::GDStreamReader;
+use godot::prelude::{godot_api, GodotClass, INode};
 
 #[derive(GodotClass)]
 #[class(base=Node)]
@@ -22,5 +21,5 @@ impl INode for GDReplicatedNode {
 #[godot_api]
 impl GDReplicatedNode {
     #[signal]
-    pub fn deserialize(stream_reader: Gd<GDStreamReader>);
+    pub fn deserialize(snap1: Vec<u8>, snap2: Vec<u8>, alpha: f32);
 }

@@ -73,7 +73,7 @@ impl StreamWriter {
     pub fn write_serializable<T: Serializable>(&mut self, data: T) {
         data.serialize(self);
     }
-    
+
     pub fn write_serializable_ref<T: Serializable>(&mut self, data: &T) {
         data.serialize(self);
     }
@@ -83,5 +83,11 @@ impl StreamWriter {
         for serializable in data {
             self.write_serializable(serializable);
         }
+    }
+}
+
+impl Serializable for u8 {
+    fn serialize(&self, stream: &mut StreamWriter) {
+        stream.write_u8(*self);
     }
 }

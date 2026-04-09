@@ -1,6 +1,7 @@
 ﻿use crate::linking_context::GDLinkingContext;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::ping_request::{PingRequest, PingResponse};
+use common::snapshot::Snapshot;
 use common::stream_reader::StreamReader;
 use common::stream_writer::StreamWriter;
 use godot::classes::{INode, Label, Node};
@@ -29,7 +30,7 @@ pub struct GDNetworkManager {
     connection_timeout: f64,
     ping_sent: u32,
     last_snapshot_handled: f64,
-    snapshots: VecDeque<Vec<u8>>,
+    snapshots: VecDeque<Snapshot>,
     pub server_frame: u32,
     last_time_since_ping: f64,
 
@@ -84,9 +85,21 @@ impl INode for GDNetworkManager {
                 None => {}
             }
         }
+
         self.connection_timeout += delta;
         if self.connection_timeout > 0.100 {
             self.handle_timeout()
+        }
+
+        if let (Some(s1), Some(s2)) = (self.snapshots.get(0), self.snapshots.get(1)) {
+            let snap1 = s1.clone();
+            let snap2 = s2.clone();
+
+            self.get_linking_context().bind_mut().handle_snapshot(
+                snap1,
+                snap2,
+                (self.last_snapshot_handled / (1.0 / 30.0)) as f32,
+            );
         }
     }
 
@@ -161,10 +174,10 @@ impl GDNetworkManager {
                 self.send_message(MessageType::Hsk, &mut message);
             }
             ConnectionState::Connected => {
-                if self.last_snapshot_handled > 1.0 {
-                    self.set_connection_state(ConnectionState::Spurious)
-                }
-            },
+                //if self.last_snapshot_handled > 1.0 {
+                //    self.set_connection_state(ConnectionState::Spurious)
+                //}
+            }
             ConnectionState::Spurious => {
                 if self.ping_sent < 3 {
                     let mut message: Vec<u8> = vec![];
@@ -216,7 +229,8 @@ impl GDNetworkManager {
             DataType::None => {}
             DataType::Input => {}
             DataType::Replication => {
-                self.snapshots.push_back(buffer.to_vec());
+                let mut stream_reader = StreamReader::new(buffer.to_vec());
+                self.snapshots.push_back(stream_reader.read_serializable());
 
                 if self.snapshots.len() < 3 {
                     return;
@@ -225,10 +239,6 @@ impl GDNetworkManager {
                 if self.snapshots.len() > 3 {
                     self.snapshots.pop_front();
                 }
-
-                self.get_linking_context()
-                    .bind_mut()
-                    .handle_snapshot(buffer.to_vec());
             }
             DataType::Despawn => {
                 self.despawn_replicated_node(buffer);

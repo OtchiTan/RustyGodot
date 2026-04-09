@@ -127,3 +127,9 @@ impl StreamReader {
         self.cursor < self.buffer.len()
     }
 }
+
+impl Deserializable for u8 {
+    fn deserialize(stream_reader: &mut StreamReader) -> Self {
+        stream_reader.read_u8()
+    }
+}

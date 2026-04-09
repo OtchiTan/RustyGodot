@@ -1,5 +1,6 @@
 ﻿use crate::network_manager::GDNetworkManager;
-use crate::stream_reader::GDStreamReader;
+use common::stream_reader::StreamReader;
+use godot::builtin::math::FloatExt;
 use godot::builtin::Vector2;
 use godot::classes::{CharacterBody2D, ICharacterBody2D};
 use godot::obj::{Base, Gd, WithBaseField};
@@ -47,21 +48,22 @@ impl GDPlayer {
     }
 
     #[func]
-    pub fn deserialize_bytes(&mut self, mut sr: Gd<GDStreamReader>) {
-        let position = sr
-            .bind_mut()
-            .stream_reader
-            .as_mut()
-            .expect("Check just before")
-            .read_vec2();
-        self.owner_id = sr
-            .bind_mut()
-            .stream_reader
-            .as_mut()
-            .expect("Check just before")
-            .read_u32();
+    pub fn deserialize_bytes(&mut self, snap1: Vec<u8>, snap2: Vec<u8>, alpha: f32) {
+        let mut sr1 = StreamReader::new(snap1);
+        let mut sr2 = StreamReader::new(snap2);
 
-        self.base_mut()
-            .set_position(Vector2::new(position.x, position.y));
+        let position1 = sr1.read_vec2();
+        let position2 = sr2.read_vec2();
+        self.owner_id = sr2.read_u32();
+
+        let mut x = position2.x;
+        let mut y = position2.y;
+
+        if !self.is_locally_owned() {
+            x = position1.x.lerp(position2.x, alpha);
+            y = position1.y.lerp(position2.y, alpha);
+        }
+
+        self.base_mut().set_position(Vector2::new(x, y));
     }
 }
