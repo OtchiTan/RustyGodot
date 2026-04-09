@@ -1,8 +1,10 @@
-﻿use crate::replication::events::on_client_connected::on_client_connected;
-use crate::replication::events::on_client_disconnected::on_client_disconnected;
-use crate::replication::events::on_destroy_entity::on_destroy_entity;
+﻿use crate::replication::events::on_client_connected::{ClientConnected, on_client_connected};
+use crate::replication::events::on_client_disconnected::{
+    ClientDisconnected, on_client_disconnected,
+};
+use crate::replication::events::on_destroy_entity::{DestroyEntity, on_destroy_entity};
 use crate::replication::replication_manager::{ReplicationManager, handle_snapshots};
-use bevy::app::{App, FixedUpdate, Plugin};
+use bevy::app::{App, FixedUpdate, Plugin, Update};
 use bevy::prelude::{Fixed, Time};
 use std::collections::HashMap;
 
@@ -17,9 +19,17 @@ impl Plugin for ReplicationPlugin {
         app.insert_resource(ReplicationManager {
             client_entities: HashMap::new(),
         })
-        .add_observer(on_destroy_entity)
-        .add_observer(on_client_connected)
-        .add_observer(on_client_disconnected)
+        .add_message::<DestroyEntity>()
+        .add_message::<ClientConnected>()
+        .add_message::<ClientDisconnected>()
+        .add_systems(
+            Update,
+            (
+                on_destroy_entity,
+                on_client_connected,
+                on_client_disconnected,
+            ),
+        )
         .insert_resource(Time::<Fixed>::from_hz(30.0))
         .add_systems(FixedUpdate, handle_snapshots);
     }

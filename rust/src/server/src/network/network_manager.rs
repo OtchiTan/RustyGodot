@@ -2,7 +2,7 @@
 use crate::network::connected_client::ConnectedClient;
 use crate::replication::events::on_client_connected::ClientConnected;
 use crate::replication::events::on_client_disconnected::ClientDisconnected;
-use bevy::prelude::{Commands, Resource};
+use bevy::prelude::{Commands, MessageWriter, Resource};
 use common::input_packet::InputBuffer;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::ping_request::PingRequest;
@@ -36,7 +36,12 @@ impl NetworkManager {
         self.send_data(&addr, stream_writer.get_data());
     }
 
-    fn handle_hsk(&self, addr: String, commands: &mut Commands) {
+    fn handle_hsk(
+        &self,
+        addr: String,
+        commands: &mut Commands,
+        ev_client_connected: &mut MessageWriter<ClientConnected>,
+    ) {
         let client_net_id = rand::random();
         let connected_client = commands
             .spawn(ConnectedClient {
@@ -57,32 +62,42 @@ impl NetworkManager {
 
         println!("Send hsk to {}", addr);
         self.send_data(&addr, stream_writer.get_data());
-        commands.trigger(client_connected);
+        ev_client_connected.write(client_connected);
     }
 
     fn handle_ping(
         &self,
         address: String,
         mut stream_reader: StreamReader,
-        commands: &mut Commands,
+        ev_ping_received: &mut MessageWriter<PingReceived>,
     ) {
         let ping_request: PingRequest = stream_reader.read_serializable();
 
-        commands.trigger(PingReceived {
+        ev_ping_received.write(PingReceived {
             ping_request,
             address,
-        })
+        });
     }
 
-    fn handle_bye(&self, mut stream_reader: StreamReader, commands: &mut Commands) {
+    fn handle_bye(
+        &self,
+        mut stream_reader: StreamReader,
+        ev_client_disconnected: &mut MessageWriter<ClientDisconnected>,
+    ) {
         let net_id = stream_reader.read_u32();
 
-        commands.trigger(ClientDisconnected {
+        ev_client_disconnected.write(ClientDisconnected {
             client_net_id: net_id,
-        })
+        });
     }
 
-    pub fn poll(&self, mut commands: Commands) -> Vec<InputBuffer> {
+    pub fn poll(
+        &self,
+        mut commands: Commands,
+        mut ev_ping_received: MessageWriter<PingReceived>,
+        mut ev_client_connected: MessageWriter<ClientConnected>,
+        mut ev_client_disconnected: MessageWriter<ClientDisconnected>,
+    ) -> Vec<InputBuffer> {
         let mut input_buffers = Vec::new();
 
         loop {
@@ -94,12 +109,16 @@ impl NetworkManager {
                     let message_header: MessageHeader = stream_reader.read_serializable();
                     match message_header.message_type {
                         MessageType::Helo => self.handle_helo(socket_addr),
-                        MessageType::Hsk => self.handle_hsk(socket_addr, &mut commands),
+                        MessageType::Hsk => {
+                            self.handle_hsk(socket_addr, &mut commands, &mut ev_client_connected)
+                        }
                         MessageType::Ping => {
-                            self.handle_ping(socket_addr, stream_reader, &mut commands)
+                            self.handle_ping(socket_addr, stream_reader, &mut ev_ping_received)
                         }
                         MessageType::Data => input_buffers.push(stream_reader.read_serializable()),
-                        MessageType::Bye => self.handle_bye(stream_reader, &mut commands),
+                        MessageType::Bye => {
+                            self.handle_bye(stream_reader, &mut ev_client_disconnected)
+                        }
                     };
                 } else {
                     break;
