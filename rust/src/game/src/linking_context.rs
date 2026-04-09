@@ -52,6 +52,8 @@ impl GDLinkingContext {
                 } else {
                     self.spawn(next_frame_node.net_id, next_frame_node.type_id);
                 }
+            } else {
+                self.despawn(node.net_id);
             }
         }
     }

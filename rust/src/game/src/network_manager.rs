@@ -239,19 +239,8 @@ impl GDNetworkManager {
                     self.snapshots.pop_front();
                 }
             }
-            DataType::Despawn => {
-                self.despawn_replicated_node(stream_reader.get_rest_buffer());
-            }
         }
     }
-
-    fn despawn_replicated_node(&mut self, buffer: &[u8]) {
-        let mut stream_reader = StreamReader::new(buffer.to_vec());
-        let net_id = stream_reader.read_u32();
-
-        self.get_linking_context().bind_mut().despawn(net_id);
-    }
-
     pub fn get_server_frame(&self) -> u32 {
         self.server_frame + (self.last_time_since_ping / self.server_frequency) as u32
     }

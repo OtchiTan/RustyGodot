@@ -17,3 +17,4 @@ func _process(_delta: float) -> void:
 
 func _on_boat_deserialize(snap1: Array[int], snap2: Array[int], alpha: float) -> void:
 	call_deferred("deserialize_bytes", snap1, snap2, alpha)
+	#deserialize_bytes(snap1, snap2, alpha)

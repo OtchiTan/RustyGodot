@@ -15,7 +15,6 @@ pub enum DataType {
     None = 0,
     Input = 1,
     Replication = 2,
-    Despawn = 3,
 }
 
 pub struct MessageHeader {
@@ -64,7 +63,6 @@ impl TryFrom<u8> for DataType {
             0 => Ok(DataType::None),
             1 => Ok(DataType::Input),
             2 => Ok(DataType::Replication),
-            3 => Ok(DataType::Despawn),
             _ => Err(EnumError),
         }
     }
