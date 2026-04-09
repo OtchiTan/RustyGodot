@@ -44,6 +44,7 @@ impl INode for GDInputManager {
 
             let mut stream_writer = StreamWriter::new();
             let input_buffer = InputBuffer {
+                client_id: network_manager.bind().client_id,
                 node_id: self.net_id,
                 packets: Vec::from(self.input_packets.clone()),
             };

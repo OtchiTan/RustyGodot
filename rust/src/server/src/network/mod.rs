@@ -1,12 +1,13 @@
-﻿use crate::{SERVER_FREQUENCY, SERVER_IP};
+﻿use crate::input::input_manager::InputManager;
 use crate::network::connected_client::ConnectedClient;
 use crate::network::network_manager::NetworkManager;
 use crate::replication::events::on_client_connected::ClientConnected;
 use crate::replication::events::on_client_disconnected::ClientDisconnected;
 use crate::replication::replicated_nodes::player::Player;
-use crate::input::input_manager::InputManager;
+use crate::{SERVER_FREQUENCY, SERVER_IP};
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::ping_request::{PingRequest, PingResponse};
 use common::stream_writer::StreamWriter;
@@ -23,25 +24,32 @@ impl Plugin for NetworkPlugin {
             .add_message::<PingReceived>()
             .add_systems(Update, on_ping_received)
             .insert_resource(Time::<Fixed>::from_hz(SERVER_FREQUENCY))
-            .add_systems(FixedUpdate, poll)
-            .insert_resource(Time::<Fixed>::from_hz(1.0))
-            .add_systems(FixedUpdate, handle_timeout);
+            .add_systems(
+                FixedUpdate,
+                (
+                    poll,
+                    handle_timeout.run_if(on_timer(Duration::from_secs(1))),
+                ),
+            );
     }
 }
 
-fn handle_timeout(connected_clients: Query<&ConnectedClient>, mut commands: Commands) {
+fn handle_timeout(
+    connected_clients: Query<&ConnectedClient>,
+    mut ev_client_disconnect: MessageWriter<ClientDisconnected>,
+) {
     let server_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis() as u64;
 
     for client in connected_clients.iter() {
-        let rtt = Duration::from_millis(server_time - client.latest_ping).as_millis();
-        if rtt > 300 {
-            //println!("Timed out client {}", client.net_id);
-            //commands.trigger(ClientDisconnected {
-            //    client_net_id: client.net_id,
-            //})
+        let rtt = Duration::from_millis(server_time - client.latest_data_received).as_millis();
+        if rtt > 150 {
+            println!("Timed out client {}", client.net_id);
+            ev_client_disconnect.write(ClientDisconnected {
+                client_net_id: client.net_id,
+            });
         }
     }
 }
@@ -50,6 +58,7 @@ fn poll(
     commands: Commands,
     network_manager: ResMut<NetworkManager>,
     players: Query<&mut Player>,
+    clients: Query<&mut ConnectedClient>,
     mut input_manager: ResMut<InputManager>,
     ev_ping_received: MessageWriter<PingReceived>,
     ev_client_connected: MessageWriter<ClientConnected>,
@@ -61,7 +70,7 @@ fn poll(
         ev_client_connected,
         ev_client_disconnected,
     );
-    input_manager.handle_input(poll_events, players);
+    input_manager.handle_input(poll_events, players, clients);
 }
 
 #[derive(Message, Debug)]
@@ -86,7 +95,7 @@ fn on_ping_received(
             .iter_mut()
             .find(|client| client.address == ping_received.address)
         {
-            connected_client.latest_ping = server_time;
+            connected_client.latest_data_received = server_time;
         }
 
         let mut stream_writer = StreamWriter::new();

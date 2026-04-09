@@ -4,8 +4,9 @@ use glm::Vec2;
 
 #[derive(Debug)]
 pub struct InputBuffer {
+    pub client_id: u32,
     pub node_id: u32,
-   pub packets: Vec<InputPacket>,
+    pub packets: Vec<InputPacket>,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +75,7 @@ impl InputPacket {
 
 impl Serializable for InputBuffer {
     fn serialize(&self, stream: &mut StreamWriter) {
+        stream.write_u32(self.client_id);
         stream.write_u32(self.node_id);
         stream.write_serializable_vec(self.packets.clone());
     }
@@ -81,10 +83,15 @@ impl Serializable for InputBuffer {
 
 impl Deserializable for InputBuffer {
     fn deserialize(stream_reader: &mut StreamReader) -> Self {
+        let client_id = stream_reader.read_u32();
         let node_id = stream_reader.read_u32();
         let packets = stream_reader.read_serializable_vec();
 
-        Self { node_id, packets }
+        Self {
+            client_id,
+            node_id,
+            packets,
+        }
     }
 }
 

@@ -49,7 +49,7 @@ impl NetworkManager {
             .spawn(ConnectedClient {
                 net_id: client_net_id,
                 address: addr.clone(),
-                latest_ping: 0,
+                latest_data_received: 0,
             })
             .id();
 
