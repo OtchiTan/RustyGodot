@@ -9,6 +9,7 @@ use bevy::MinimalPlugins;
 use bevy::app::App;
 
 const SERVER_IP: &str = "127.0.0.1:3630";
+const SERVER_FREQUENCY: f64 = 60.0;
 
 fn main() {
     App::new()

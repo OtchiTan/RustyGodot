@@ -1,4 +1,4 @@
-﻿use crate::SERVER_IP;
+﻿use crate::{SERVER_FREQUENCY, SERVER_IP};
 use crate::network::connected_client::ConnectedClient;
 use crate::network::network_manager::NetworkManager;
 use crate::replication::events::on_client_connected::ClientConnected;
@@ -22,7 +22,7 @@ impl Plugin for NetworkPlugin {
         app.insert_resource(NetworkManager::new(SERVER_IP))
             .add_message::<PingReceived>()
             .add_systems(Update, on_ping_received)
-            .insert_resource(Time::<Fixed>::from_hz(30.0))
+            .insert_resource(Time::<Fixed>::from_hz(SERVER_FREQUENCY))
             .add_systems(FixedUpdate, poll)
             .insert_resource(Time::<Fixed>::from_hz(1.0))
             .add_systems(FixedUpdate, handle_timeout);

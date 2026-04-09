@@ -5,3 +5,4 @@ pub mod replicated_node;
 pub mod snapshot;
 pub mod stream_reader;
 pub mod stream_writer;
+pub mod handshake;

@@ -1,4 +1,5 @@
 ﻿use crate::linking_context::GDLinkingContext;
+use common::handshake::Handshake;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::ping_request::{PingRequest, PingResponse};
 use common::snapshot::Snapshot;
@@ -33,6 +34,7 @@ pub struct GDNetworkManager {
     snapshots: VecDeque<Snapshot>,
     pub server_frame: u32,
     last_time_since_ping: f64,
+    server_frequency: f64,
 
     pub client_id: u32,
     base: Base<Node>,
@@ -52,6 +54,7 @@ impl INode for GDNetworkManager {
             server_frame: 0,
             last_time_since_ping: 0.0,
             last_snapshot_handled: 0.0,
+            server_frequency: 1.0,
         }
     }
 
@@ -67,18 +70,9 @@ impl INode for GDNetworkManager {
                     let message_header: MessageHeader = stream_reader.read_serializable();
                     match message_header.message_type {
                         MessageType::Helo => self.set_connection_state(ConnectionState::Connecting),
-                        MessageType::Hsk => {
-                            self.set_connection_state(ConnectionState::Connected);
-                            self.client_id = stream_reader.read_u32();
-                            godot_print!("ClientID : {:?}", self.client_id);
-                            let mut buffer: Vec<u8> = vec![];
-                            self.send_message(MessageType::Data, &mut buffer);
-                        }
-                        MessageType::Ping => self.handle_ping(stream_reader.get_rest_buffer()),
-                        MessageType::Data => {
-                            self.last_snapshot_handled = 0.0;
-                            self.handle_data(message_header, stream_reader.get_rest_buffer())
-                        }
+                        MessageType::Hsk => self.handle_hsk(stream_reader),
+                        MessageType::Ping => self.handle_ping(stream_reader),
+                        MessageType::Data => self.handle_data(message_header, stream_reader),
                         MessageType::Bye => self.disconnect_socket(false),
                     }
                 }
@@ -98,7 +92,7 @@ impl INode for GDNetworkManager {
             self.get_linking_context().bind_mut().handle_snapshot(
                 snap1,
                 snap2,
-                (self.last_snapshot_handled / (1.0 / 30.0)) as f32,
+                (self.last_snapshot_handled / self.server_frequency) as f32,
             );
         }
     }
@@ -106,7 +100,7 @@ impl INode for GDNetworkManager {
     fn physics_process(&mut self, delta: f64) {
         self.last_time_since_ping += delta;
 
-        self.server_frame += (self.last_time_since_ping / (1.0 / 30.0)) as u32;
+        self.server_frame += (self.last_time_since_ping / self.server_frequency) as u32;
 
         if self.last_time_since_ping > 1.0 {
             let mut stream_writer = StreamWriter::new();
@@ -207,8 +201,7 @@ impl GDNetworkManager {
             .get_node_as::<GDLinkingContext>("%GDLinkingContext")
     }
 
-    fn handle_ping(&mut self, buffer: &[u8]) {
-        let mut stream_reader = StreamReader::new(buffer.to_vec());
+    fn handle_ping(&mut self, mut stream_reader: StreamReader) {
         let ping_response: PingResponse = stream_reader.read_serializable();
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -223,13 +216,21 @@ impl GDNetworkManager {
         label.set_text(&godot_str!("{rtt} ms"));
     }
 
-    fn handle_data(&mut self, message_header: MessageHeader, buffer: &[u8]) {
+    fn handle_hsk(&mut self, mut stream_reader: StreamReader) {
+        let handshake: Handshake = stream_reader.read_serializable();
+        self.set_connection_state(ConnectionState::Connected);
+        self.client_id = handshake.client_id;
+        self.server_frequency = 1.0 / handshake.server_frequency;
+        godot_print!("ClientID : {:?}", self.client_id);
+    }
+
+    fn handle_data(&mut self, message_header: MessageHeader, mut stream_reader: StreamReader) {
+        self.last_snapshot_handled = 0.0;
         self.connection_timeout = 0.0;
         match message_header.data_type {
             DataType::None => {}
             DataType::Input => {}
             DataType::Replication => {
-                let mut stream_reader = StreamReader::new(buffer.to_vec());
                 self.snapshots.push_back(stream_reader.read_serializable());
 
                 if self.snapshots.len() < 3 {
@@ -241,7 +242,7 @@ impl GDNetworkManager {
                 }
             }
             DataType::Despawn => {
-                self.despawn_replicated_node(buffer);
+                self.despawn_replicated_node(stream_reader.get_rest_buffer());
             }
         }
     }

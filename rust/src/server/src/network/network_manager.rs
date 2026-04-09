@@ -1,8 +1,10 @@
-﻿use crate::network::PingReceived;
+﻿use crate::SERVER_FREQUENCY;
+use crate::network::PingReceived;
 use crate::network::connected_client::ConnectedClient;
 use crate::replication::events::on_client_connected::ClientConnected;
 use crate::replication::events::on_client_disconnected::ClientDisconnected;
 use bevy::prelude::{Commands, MessageWriter, Resource};
+use common::handshake::Handshake;
 use common::input_packet::InputBuffer;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::ping_request::PingRequest;
@@ -58,7 +60,10 @@ impl NetworkManager {
 
         let mut stream_writer = StreamWriter::new();
         stream_writer.write_serializable(MessageHeader::init(MessageType::Hsk, DataType::None));
-        stream_writer.write_u32(client_net_id);
+        stream_writer.write_serializable(Handshake {
+            client_id: client_net_id,
+            server_frequency: SERVER_FREQUENCY,
+        });
 
         println!("Send hsk to {}", addr);
         self.send_data(&addr, stream_writer.get_data());
