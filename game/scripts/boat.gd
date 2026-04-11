@@ -2,16 +2,17 @@ extends GDPlayer
 
 @onready var input_manager: GDInputManager = $"../GDInputManager"
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
+var orientation := 0
 
 const ANIMATION_FRAMES = [
-	"idle_r",
-	"idle_tr",
-	"idle_t",
-	"idle_tl",
-	"idle_l",
-	"idle_bl",
-	"idle_b",
-	"idle_br",
+	"r",
+	"tr",
+	"t",
+	"tl",
+	"l",
+	"bl",
+	"b",
+	"br",
 ]
 
 func _process(_delta: float) -> void:
@@ -23,11 +24,16 @@ func _process(_delta: float) -> void:
 			"move_up"
 		)
 		
+		var state = "idle"
+		
 		if direction != Vector2.ZERO:
-			var orientation = roundi(rad_to_deg(direction.angle()));
+			state = "move"
+			orientation = roundi(rad_to_deg(direction.angle()));
 			if orientation < 0:
 				orientation = 360 + orientation
-			sprite.play(ANIMATION_FRAMES[clampi(orientation / 45.0, 0, 7)])
+		
+		var animation = ANIMATION_FRAMES[clampf(orientation / 45.0, 0, 7)];
+		sprite.play(state + "_" + animation)
 			
 		input_manager.add_direction_input(direction)
 
