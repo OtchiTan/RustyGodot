@@ -932,7 +932,8 @@ radius = 14.250548
 
 [node name="Boat" type="GDReplicatedNode" unique_id=95272243]
 
-[node name="GDPlayer" type="GDPlayer" parent="." unique_id=1855864741]
+[node name="GDPlayer" type="GDPlayer" parent="." unique_id=1855864741 node_paths=PackedStringArray("input_manager")]
+input_manager = NodePath("../GDInputManager")
 script = ExtResource("1_0063d")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="GDPlayer" unique_id=1642651656]
@@ -945,6 +946,6 @@ autoplay = "idle_r"
 scale = Vector2(8, 8)
 shape = SubResource("CircleShape2D_0063d")
 
-[node name="GDInputManager" type="GDInputManager" parent="." unique_id=825383425]
+[node name="GDInputManager" type="GDInputManager" parent="." unique_id=213101246]
 
 [connection signal="deserialize" from="." to="GDPlayer" method="_on_boat_deserialize"]

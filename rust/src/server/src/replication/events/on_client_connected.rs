@@ -25,6 +25,7 @@ pub fn on_client_connected(
             type_id: 0,
             owner_id: on_connected.client_net_id,
             position,
+            velocity: Vec2::new(0.0, 0.0),
         };
 
         let player_entity = commands.spawn(player).id();
