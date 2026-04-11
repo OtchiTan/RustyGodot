@@ -15,6 +15,14 @@ run/main_scene="uid://bfmy0g0v4chk6"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+PhantomCameraManager="*uid://duq6jhf6unyis"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/phantom_camera/plugin.cfg")
+
 [input]
 
 move_left={
