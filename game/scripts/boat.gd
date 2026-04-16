@@ -2,6 +2,9 @@ extends GDPlayer
 
 @onready var input_manager: GDInputManager = $"../GDInputManager"
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
+
+@export var boat_speed = 500.0;
+
 var orientation := 0
 
 const ANIMATION_FRAMES = [
@@ -36,6 +39,9 @@ func _process(_delta: float) -> void:
 		sprite.play(state + "_" + animation)
 			
 		input_manager.add_direction_input(direction)
+		
+		velocity = direction * boat_speed
+		move_and_slide()
 
 
 

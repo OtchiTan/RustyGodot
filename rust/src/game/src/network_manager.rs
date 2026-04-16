@@ -85,7 +85,14 @@ impl INode for GDNetworkManager {
             self.handle_timeout()
         }
 
-        if let (Some(s1), Some(s2)) = (self.snapshots.get(0), self.snapshots.get(1)) {
+        if self.snapshots.len() <= 2 {
+            return;
+        }
+
+        if let (Some(s1), Some(s2)) = (
+            self.snapshots.get(self.snapshots.len() - 2),
+            self.snapshots.get(self.snapshots.len() - 1),
+        ) {
             let snap1 = s1.clone();
             let snap2 = s2.clone();
 
