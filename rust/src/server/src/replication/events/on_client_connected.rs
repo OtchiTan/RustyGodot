@@ -20,12 +20,7 @@ pub fn on_client_connected(
             rand::random_range(20.0..180.0) * 16.0,
             rand::random_range(20.0..90.0) * 16.0,
         );
-        let player = Player {
-            net_id: player_net_id,
-            type_id: 0,
-            owner_id: on_connected.client_net_id,
-            position,
-        };
+        let player = Player::new(player_net_id, on_connected.client_net_id, position);
 
         let player_entity = commands.spawn(player).id();
 
