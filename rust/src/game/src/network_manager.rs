@@ -89,18 +89,30 @@ impl INode for GDNetworkManager {
             return;
         }
 
-        if let (Some(s1), Some(s2)) = (
-            self.snapshots.get(self.snapshots.len() - 2),
-            self.snapshots.get(self.snapshots.len() - 1),
-        ) {
-            let snap1 = s1.clone();
-            let snap2 = s2.clone();
+        let alpha = (self.last_snapshot_handled / self.server_frequency) as f32;
 
-            self.get_linking_context().bind_mut().handle_snapshot(
-                snap1,
-                snap2,
-                (self.last_snapshot_handled / self.server_frequency) as f32,
-            );
+        if let Some(s1) = self.snapshots.get(0) {
+            let snap1 = s1.clone();
+            let mut snap2: Option<Snapshot> = None;
+
+            let mut i = 1;
+            while snap2.is_none() {
+                if let Some(s) = self.snapshots.get(i) {
+                    snap2 = Some(s.clone());
+                }
+                i += 1;
+                if i >= self.snapshots.len() {
+                    break;
+                }
+            }
+
+            if let Some(snap2) = snap2 {
+                self.get_linking_context()
+                    .bind_mut()
+                    .handle_snapshot(snap1, snap2, alpha / i as f32);
+            } else {
+                godot_print!("Snapshot not found");
+            }
         }
     }
 
