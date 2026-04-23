@@ -56,14 +56,18 @@ impl GDPlayer {
         let position2 = sr2.read_vec2();
         self.owner_id = sr2.read_u32();
 
-        let mut x = position2.x;
-        let mut y = position2.y;
+        let old_position = Vector2::new(position1.x, position1.y);
+        let mut next_position = Vector2::new(position2.x, position2.y);
 
         if !self.is_locally_owned() {
-            x = position1.x.lerp(position2.x, alpha);
-            y = position1.y.lerp(position2.y, alpha);
+            next_position = old_position.lerp(next_position, alpha);
+
+            self.base_mut().set_position(next_position);
+            return;
         }
 
-        self.base_mut().set_position(Vector2::new(x, y));
+        if self.base().get_position().distance_to(next_position) >= 150.0 {
+            self.base_mut().set_position(next_position);
+        }
     }
 }

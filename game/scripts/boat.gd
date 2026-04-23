@@ -9,13 +9,13 @@ var orientation := 0
 
 const ANIMATION_FRAMES = [
 	"r",
-	"tr",
-	"t",
-	"tl",
-	"l",
-	"bl",
-	"b",
 	"br",
+	"b",
+	"bl",
+	"l",
+	"tl",
+	"t",
+	"tr",
 ]
 
 func _process(_delta: float) -> void:
@@ -23,8 +23,8 @@ func _process(_delta: float) -> void:
 		var direction = Input.get_vector(
 			"move_left",
 			"move_right",
+			"move_up",
 			"move_down",
-			"move_up"
 		)
 		
 		var state = "idle"
@@ -37,11 +37,12 @@ func _process(_delta: float) -> void:
 		
 		var animation = ANIMATION_FRAMES[clampf(orientation / 45.0, 0, 7)];
 		sprite.play(state + "_" + animation)
-			
-		input_manager.add_direction_input(direction)
 		
 		velocity = direction * boat_speed
 		move_and_slide()
+		
+		input_manager.add_direction_input(direction)
+		
 
 
 

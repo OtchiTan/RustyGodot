@@ -25,7 +25,7 @@ impl Clone for Player {
 impl Player {
     pub fn handle_input(&mut self, input_packet: InputPacket) {
         let input_direction =
-            input_packet.read_vector(Input::Right, Input::Left, Input::Down, Input::Up);
+            input_packet.read_vector(Input::Right, Input::Left, Input::Up, Input::Down);
         self.position = self.position + input_direction * 5.0;
     }
 }
