@@ -23,14 +23,14 @@ impl InputManager {
             .as_millis() as u64;
 
         for buffer in buffers {
-            if let Some(mut player) = players
+            if let Some((mut player, mut velocity)) = players
                 .iter_mut()
-                .find(|node| node.0.net_id == buffer.node_id)
+                .find(|(player, _velocity)| player.net_id == buffer.node_id)
             {
                 for input_packet in buffer.packets {
                     if input_packet.sequence == self.server_frame {
-                        let velocity = player.0.handle_input(input_packet);
-                        player.1.linvel = Vec2::new(velocity.x, velocity.y);
+                        let new_velocity = player.handle_input(input_packet);
+                        velocity.linvel = Vec2::new(new_velocity.x, new_velocity.y);
                     }
                 }
             }
