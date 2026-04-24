@@ -53,6 +53,7 @@ impl GDPlayer {
         let mut sr2 = StreamReader::new(snap2);
 
         let position1 = sr1.read_vec2();
+
         let position2 = sr2.read_vec2();
         self.owner_id = sr2.read_u32();
 

@@ -1,7 +1,8 @@
 ﻿use crate::replication::replicated_nodes::player::Player;
 use crate::replication::replication_manager::{ClientEntityLink, ReplicationManager};
 use bevy::prelude::*;
-use glm::Vec2;
+use bevy_rapier2d::dynamics::Velocity;
+use bevy_rapier2d::prelude::{Collider, RigidBody};
 
 #[derive(Message, Debug)]
 pub struct ClientConnected {
@@ -16,13 +17,25 @@ pub fn on_client_connected(
 ) {
     for on_connected in messages.read() {
         let player_net_id = rand::random();
-        let position = Vec2::new(
+        let position = Transform::from_xyz(
             rand::random_range(20.0..180.0) * 16.0,
             rand::random_range(20.0..90.0) * 16.0,
+            0.0,
         );
-        let player = Player::new(player_net_id, on_connected.client_net_id, position);
+        let player = Player::new(player_net_id, on_connected.client_net_id);
 
-        let player_entity = commands.spawn(player).id();
+        let player_entity = commands
+            .spawn((
+                player,
+                RigidBody::Dynamic,
+                Collider::ball(15.0),
+                position,
+                Velocity {
+                    linvel: Vec2::new(0.0, 0.0),
+                    angvel: 0.0,
+                },
+            ))
+            .id();
 
         let mut client_entity = ClientEntityLink::new(on_connected.entity);
 

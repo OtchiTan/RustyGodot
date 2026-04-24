@@ -1,12 +1,14 @@
-﻿use crate::network::connected_client::ConnectedClient;
+﻿use crate::input::input_manager::InputManager;
+use crate::network::connected_client::ConnectedClient;
 use crate::network::network_manager::NetworkManager;
 use crate::replication::replicated_nodes::player::Player;
-use crate::input::input_manager::InputManager;
-use bevy::prelude::{Entity, Query, Res, Resource};
+use bevy::prelude::{Entity, Query, Res, Resource, Transform};
+use bevy_rapier2d::prelude::Velocity;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::replicated_node::ReplicatedNode;
 use common::snapshot::Snapshot;
 use common::stream_writer::StreamWriter;
+use glm::Vec2;
 use std::collections::HashMap;
 
 #[derive(Resource)]
@@ -31,7 +33,7 @@ impl ClientEntityLink {
 pub fn handle_snapshots(
     network_manager: Res<NetworkManager>,
     clients: Query<&ConnectedClient>,
-    replicated_nodes: Query<&Player>,
+    replicated_nodes: Query<(&Transform, &Player, &Velocity)>,
     input_manager: Res<InputManager>,
 ) {
     let mut stream_writer = StreamWriter::new();
@@ -41,8 +43,9 @@ pub fn handle_snapshots(
 
     let mut snapshot = Snapshot::new(input_manager.server_frame);
 
-    for player in replicated_nodes.iter() {
+    for (transform, player, _velocity) in replicated_nodes.iter() {
         let mut sw = StreamWriter::new();
+        sw.write_vec2(Vec2::new(transform.translation.x, transform.translation.y));
         sw.write_serializable_ref(player);
 
         snapshot.nodes.push(ReplicatedNode {

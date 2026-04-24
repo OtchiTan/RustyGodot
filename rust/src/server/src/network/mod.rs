@@ -8,6 +8,7 @@ use crate::{SERVER_FREQUENCY, SERVER_IP};
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
+use bevy_rapier2d::dynamics::Velocity;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::ping_request::{PingRequest, PingResponse};
 use common::stream_writer::StreamWriter;
@@ -57,7 +58,7 @@ fn handle_timeout(
 fn poll(
     commands: Commands,
     network_manager: ResMut<NetworkManager>,
-    players: Query<&mut Player>,
+    players: Query<(&mut Player, &mut Velocity)>,
     clients: Query<&mut ConnectedClient>,
     mut input_manager: ResMut<InputManager>,
     ev_ping_received: MessageWriter<PingReceived>,

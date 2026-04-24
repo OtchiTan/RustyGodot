@@ -928,7 +928,7 @@ animations = [{
 }]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_0063d"]
-radius = 14.250548
+radius = 15.0
 
 [node name="Boat" type="GDReplicatedNode" unique_id=95272243]
 

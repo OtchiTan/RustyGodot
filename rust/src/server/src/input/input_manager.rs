@@ -1,8 +1,9 @@
-﻿use std::time::{SystemTime, UNIX_EPOCH};
-use crate::network::connected_client::ConnectedClient;
+﻿use crate::network::connected_client::ConnectedClient;
 use crate::replication::replicated_nodes::player::Player;
-use bevy::prelude::{Query, Resource};
+use bevy::prelude::{Query, Resource, Vec2};
+use bevy_rapier2d::prelude::Velocity;
 use common::input_packet::InputBuffer;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Resource)]
 pub struct InputManager {
@@ -13,7 +14,7 @@ impl InputManager {
     pub fn handle_input(
         &mut self,
         buffers: Vec<InputBuffer>,
-        mut players: Query<&mut Player>,
+        mut players: Query<(&mut Player, &mut Velocity)>,
         mut clients: Query<&mut ConnectedClient>,
     ) {
         let server_time = SystemTime::now()
@@ -24,11 +25,12 @@ impl InputManager {
         for buffer in buffers {
             if let Some(mut player) = players
                 .iter_mut()
-                .find(|node| node.net_id == buffer.node_id)
+                .find(|node| node.0.net_id == buffer.node_id)
             {
                 for input_packet in buffer.packets {
                     if input_packet.sequence == self.server_frame {
-                        player.handle_input(input_packet);
+                        let velocity = player.0.handle_input(input_packet);
+                        player.1.linvel = Vec2::new(velocity.x, velocity.y);
                     }
                 }
             }
