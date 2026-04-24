@@ -43,9 +43,10 @@ pub fn handle_snapshots(
 
     let mut snapshot = Snapshot::new(input_manager.server_frame);
 
-    for (transform, player, _velocity) in replicated_nodes.iter() {
+    for (transform, player, velocity) in replicated_nodes.iter() {
         let mut sw = StreamWriter::new();
         sw.write_vec2(Vec2::new(transform.translation.x, transform.translation.y));
+        sw.write_vec2(Vec2::new(velocity.linvel.x, velocity.linvel.y));
         sw.write_serializable_ref(player);
 
         snapshot.nodes.push(ReplicatedNode {

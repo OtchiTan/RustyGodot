@@ -13,6 +13,9 @@ pub struct GDPlayer {
 
     owner_id: u32,
     network_manager: Option<Gd<GDNetworkManager>>,
+
+    #[var]
+    replicated_velocity: Vector2,
 }
 
 #[godot_api]
@@ -22,6 +25,7 @@ impl ICharacterBody2D for GDPlayer {
             base,
             owner_id: 0,
             network_manager: None,
+            replicated_velocity: Vector2::new(0.0, 0.0),
         }
     }
 
@@ -55,6 +59,7 @@ impl GDPlayer {
         let position1 = sr1.read_vec2();
 
         let position2 = sr2.read_vec2();
+        let velocity = sr2.read_vec2();
         self.owner_id = sr2.read_u32();
 
         let old_position = Vector2::new(position1.x, position1.y);
@@ -62,7 +67,7 @@ impl GDPlayer {
 
         if !self.is_locally_owned() {
             next_position = old_position.lerp(next_position, alpha);
-
+            self.replicated_velocity = Vector2::new(velocity.x, velocity.y);
             self.base_mut().set_position(next_position);
             return;
         }
