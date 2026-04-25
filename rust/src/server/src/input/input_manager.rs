@@ -1,6 +1,6 @@
 ﻿use crate::network::connected_client::ConnectedClient;
 use crate::replication::replicated_nodes::player::Player;
-use bevy::prelude::{Query, Resource, Vec2};
+use bevy::prelude::{Query, Resource};
 use bevy_rapier2d::prelude::Velocity;
 use common::input_packet::InputBuffer;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -29,8 +29,8 @@ impl InputManager {
             {
                 for input_packet in buffer.packets {
                     if input_packet.sequence == self.server_frame {
-                        let new_velocity = player.handle_input(input_packet);
-                        velocity.linvel = Vec2::new(new_velocity.x, new_velocity.y);
+                        velocity.linvel = player.handle_input(input_packet);
+                        println!("{}", velocity.linvel);
                     }
                 }
             }

@@ -1,10 +1,13 @@
 ﻿use crate::network_manager::GDNetworkManager;
 use common::stream_reader::StreamReader;
-use godot::builtin::math::FloatExt;
 use godot::builtin::Vector2;
 use godot::classes::{CharacterBody2D, ICharacterBody2D};
+use godot::global::{exp};
 use godot::obj::{Base, Gd, WithBaseField};
 use godot::prelude::{godot_api, GodotClass};
+
+const MAX_HARD_SNAP: f64 = 150.0;
+const ERROR_DISTANCE: f64 = 10.0;
 
 #[derive(GodotClass)]
 #[class(base=CharacterBody2D)]
@@ -72,8 +75,38 @@ impl GDPlayer {
             return;
         }
 
-        if self.base().get_position().distance_to(next_position) >= 150.0 {
-            self.base_mut().set_position(next_position);
+        let current_pos = self.base().get_position();
+        let error_vec = next_position - current_pos;
+        let dist_error = error_vec.length() as f64;
+
+        if dist_error <= ERROR_DISTANCE {
+            return;
         }
+
+        if dist_error >= MAX_HARD_SNAP {
+            self.base_mut().set_position(next_position);
+            return;
+        }
+
+        let delta_time = self.base().get_process_delta_time();
+
+        // Bon bas là ça applique la méthode donné en cours, j'ai rien compris mais ça à l'air de marcher
+        // Par contre j'ai du baisser les paramètres de fou par apport aux exemples donnés, aucune idée de pourquoi
+
+        let g = 5.0;
+        let k = 15.0;
+        let d = 0.5;
+
+        let urgency = g * (1.0 / (MAX_HARD_SNAP - ERROR_DISTANCE));
+
+        let exponent = exp(d * dist_error * delta_time);
+        let correction_mag = urgency * (k * dist_error * delta_time / exponent);
+
+        let correction_vector = error_vec.normalized() * (correction_mag as f32);
+
+        let new_pos = current_pos + correction_vector;
+        self.base_mut().set_position(new_pos);
+
+        // Bon en vrai j'ai compris l'idée générale, mais les math et la physique j'ai trop de lacunne pour l'expliquer
     }
 }

@@ -1,7 +1,7 @@
-﻿use bevy::prelude::{Component};
+﻿use bevy::prelude::Component;
+use bevy::prelude::Vec2;
 use common::input_packet::{Input, InputPacket};
 use common::stream_writer::{Serializable, StreamWriter};
-use glm::Vec2;
 
 #[derive(Component)]
 pub struct Player {
@@ -32,7 +32,8 @@ impl Player {
     pub fn handle_input(&mut self, input_packet: InputPacket) -> Vec2 {
         let input_direction =
             input_packet.read_vector(Input::Right, Input::Left, Input::Up, Input::Down);
-        input_direction * 500.0
+        let direction = Vec2::new(input_direction.x, input_direction.y);
+        direction * 500.0
     }
 }
 

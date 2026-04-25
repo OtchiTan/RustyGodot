@@ -46,7 +46,7 @@ fn handle_timeout(
 
     for client in connected_clients.iter() {
         let rtt = Duration::from_millis(server_time - client.latest_data_received).as_millis();
-        if rtt > 150 {
+        if rtt > 300 {
             println!("Timed out client {}", client.net_id);
             ev_client_disconnect.write(ClientDisconnected {
                 client_net_id: client.net_id,
