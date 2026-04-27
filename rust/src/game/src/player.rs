@@ -6,8 +6,8 @@ use godot::global::{exp};
 use godot::obj::{Base, Gd, WithBaseField};
 use godot::prelude::{godot_api, GodotClass};
 
-const MAX_HARD_SNAP: f64 = 150.0;
-const ERROR_DISTANCE: f64 = 10.0;
+const MAX_HARD_SNAP: f64 = 250.0;
+const ERROR_DISTANCE: f64 = 20.0;
 
 #[derive(GodotClass)]
 #[class(base=CharacterBody2D)]
