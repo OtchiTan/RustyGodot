@@ -3,21 +3,12 @@ use bevy::prelude::Vec2;
 use common::input_packet::{Input, InputPacket};
 use common::stream_writer::{Serializable, StreamWriter};
 
-#[derive(Component)]
+#[derive(Component, Clone, Debug)]
 pub struct Player {
     pub net_id: u32,
     pub type_id: u32,
     pub owner_id: u32,
-}
-
-impl Clone for Player {
-    fn clone(&self) -> Self {
-        Player {
-            net_id: self.net_id,
-            type_id: self.type_id,
-            owner_id: self.owner_id,
-        }
-    }
+    pub last_handled_input: u32,
 }
 
 impl Player {
@@ -26,6 +17,7 @@ impl Player {
             net_id,
             type_id: 0,
             owner_id,
+            last_handled_input: 0,
         }
     }
 

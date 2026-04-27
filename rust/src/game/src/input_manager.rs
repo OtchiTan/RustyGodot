@@ -32,9 +32,15 @@ impl INode for GDInputManager {
         }
     }
 
-    fn physics_process(&mut self, _delta: f64) {
+    fn process(&mut self, _delta: f64) {
         if let Some(network_manager) = &mut self.network_manager {
             self.current_input.sequence = network_manager.bind().get_server_frame();
+
+            if !self.input_packets.is_empty()
+                && self.current_input.sequence == self.input_packets.iter().last().unwrap().sequence
+            {
+                return;
+            }
 
             self.input_packets.push_back(self.current_input.clone());
 
@@ -52,9 +58,9 @@ impl INode for GDInputManager {
             network_manager
                 .bind()
                 .send_message(MessageType::Data, &mut stream_writer.get_data().to_vec());
-        }
 
-        self.current_input.reset();
+            self.current_input.reset();
+        }
     }
 
     fn ready(&mut self) {

@@ -10,7 +10,7 @@ use bevy::app::App;
 use bevy_rapier2d::prelude::*;
 
 const SERVER_IP: &str = "127.0.0.1:3630";
-const SERVER_FREQUENCY: f64 = 30.0;
+const SERVER_FREQUENCY: f64 = 60.0;
 
 fn main() {
     App::new()
