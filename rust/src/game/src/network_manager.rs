@@ -1,4 +1,5 @@
 ﻿use crate::linking_context::GDLinkingContext;
+use crate::network_manager::ConnectionState::Spurious;
 use common::handshake::Handshake;
 use common::message_header::{DataType, MessageHeader, MessageType};
 use common::ping_request::{PingRequest, PingResponse};
@@ -15,7 +16,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const SERVER_IP: &str = "127.0.0.1:3630";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ConnectionState {
     NotConnected,
     Connecting,
@@ -107,9 +108,11 @@ impl INode for GDNetworkManager {
             }
 
             if let Some(snap2) = snap2 {
-                self.get_linking_context()
-                    .bind_mut()
-                    .handle_snapshot(snap1, snap2, alpha / i as f32);
+                self.get_linking_context().bind_mut().handle_snapshot(
+                    snap1,
+                    snap2,
+                    alpha / i as f32,
+                );
             } else {
                 godot_print!("Snapshot not found");
             }
@@ -185,11 +188,11 @@ impl GDNetworkManager {
                 self.send_message(MessageType::Hsk, &mut message);
             }
             ConnectionState::Connected => {
-                //if self.last_snapshot_handled > 1.0 {
-                //    self.set_connection_state(ConnectionState::Spurious)
-                //}
+                if self.last_snapshot_handled > 1.0 {
+                    self.set_connection_state(Spurious)
+                }
             }
-            ConnectionState::Spurious => {
+            Spurious => {
                 if self.ping_sent < 3 {
                     let mut message: Vec<u8> = vec![];
                     self.send_message(MessageType::Ping, &mut message);
@@ -226,6 +229,10 @@ impl GDNetworkManager {
             .as_millis() as u64;
 
         self.server_frame = ping_response.server_frame;
+
+        if self.connection_state == Spurious {
+            self.set_connection_state(ConnectionState::Connected);
+        }
 
         let rtt =
             Duration::from_millis(current_time - ping_response.time_client_request).as_millis();
