@@ -34,6 +34,7 @@ func _physics_process(_delta: float) -> void:
 		move_and_slide()
 		
 		input_manager.add_direction_input(direction)
+		input_manager.send_input()
 	else:
 		direction = replicated_velocity
 	

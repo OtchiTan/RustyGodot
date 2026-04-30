@@ -32,35 +32,6 @@ impl INode for GDInputManager {
         }
     }
 
-    fn process(&mut self, _delta: f64) {
-        if let Some(network_manager) = &mut self.network_manager {
-            self.current_input.sequence = network_manager.bind().get_server_frame();
-            
-            if !self.input_packets.is_empty()
-                && self.current_input.sequence == self.input_packets.iter().last().unwrap().sequence
-            {
-                return;
-            }
-            
-            self.input_packets.push_back(self.current_input.clone());
-
-            if self.input_packets.len() > 20 {
-                self.input_packets.pop_front();
-            }
-
-            let mut stream_writer = StreamWriter::new();
-            let input_buffer = InputBuffer {
-                client_id: network_manager.bind().client_id,
-                node_id: self.net_id,
-                packets: Vec::from(self.input_packets.clone()),
-            };
-            stream_writer.write_serializable(input_buffer);
-            network_manager
-                .bind()
-                .send_message(MessageType::Data, &mut stream_writer.get_data().to_vec());
-        }
-    }
-
     fn ready(&mut self) {
         self.network_manager = Some(
             self.base()
@@ -94,6 +65,36 @@ impl GDInputManager {
         }
         if direction.x < 0.0 {
             self.current_input.add_input(Input::Left)
+        }
+    }
+
+    #[func]
+    pub fn send_input(&mut self) {
+        if let Some(network_manager) = &mut self.network_manager {
+            self.current_input.sequence = network_manager.bind().get_server_frame();
+
+            if !self.input_packets.is_empty()
+                && self.current_input.sequence == self.input_packets.iter().last().unwrap().sequence
+            {
+                return;
+            }
+
+            self.input_packets.push_back(self.current_input.clone());
+
+            if self.input_packets.len() > 20 {
+                self.input_packets.pop_front();
+            }
+
+            let mut stream_writer = StreamWriter::new();
+            let input_buffer = InputBuffer {
+                client_id: network_manager.bind().client_id,
+                node_id: self.net_id,
+                packets: Vec::from(self.input_packets.clone()),
+            };
+            stream_writer.write_serializable(input_buffer);
+            network_manager
+                .bind()
+                .send_message(MessageType::Data, &mut stream_writer.get_data().to_vec());
         }
     }
 }

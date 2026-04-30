@@ -1,10 +1,10 @@
 ﻿use crate::network_manager::GDNetworkManager;
 use common::stream_reader::StreamReader;
 use godot::builtin::Vector2;
-use godot::classes::{CharacterBody2D, ICharacterBody2D, Label};
+use godot::classes::{CharacterBody2D, ICharacterBody2D};
 use godot::global::exp;
 use godot::obj::{Base, Gd, WithBaseField};
-use godot::prelude::{godot_api, GString, GodotClass};
+use godot::prelude::{godot_api, GodotClass};
 
 const MAX_HARD_SNAP: f64 = 250.0;
 const ERROR_DISTANCE: f64 = 20.0;
@@ -65,10 +65,6 @@ impl GDPlayer {
         let velocity = sr2.read_vec2();
         let velocity = Vector2::new(velocity.x, velocity.y);
         self.owner_id = sr2.read_u32();
-
-        let mut debug_label = self.base().get_node_as::<Label>("%DebugLabel");
-        let test: GString = GString::from(&velocity.to_string());
-        debug_label.set_text(&test);
 
         let old_position = Vector2::new(position1.x, position1.y);
         let mut next_position = Vector2::new(position2.x, position2.y);
