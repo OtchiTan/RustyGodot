@@ -53,6 +53,7 @@ move_down={
 [physics]
 
 3d/physics_engine="Jolt Physics"
+2d/default_linear_damp=0.19999999999999996
 
 [rendering]
 

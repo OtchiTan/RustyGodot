@@ -1,14 +1,16 @@
 ﻿use bevy::prelude::Component;
-use bevy::prelude::Vec2;
-use common::input_packet::{Input, InputPacket};
+use common::input_packet::InputPacket;
 use common::stream_writer::{Serializable, StreamWriter};
+use std::collections::VecDeque;
 
 #[derive(Component, Clone, Debug)]
 pub struct Player {
     pub net_id: u32,
     pub type_id: u32,
     pub owner_id: u32,
-    pub last_handled_input: u32,
+    pub input_queue: VecDeque<InputPacket>,
+    pub last_queued_input: u32,
+    pub player_speed: f32,
 }
 
 impl Player {
@@ -17,15 +19,10 @@ impl Player {
             net_id,
             type_id: 0,
             owner_id,
-            last_handled_input: 0,
+            last_queued_input: 0,
+            input_queue: VecDeque::new(),
+            player_speed: 500.0,
         }
-    }
-
-    pub fn handle_input(&mut self, input_packet: InputPacket) -> Vec2 {
-        let input_direction =
-            input_packet.read_vector(Input::Right, Input::Left, Input::Up, Input::Down);
-        let direction = Vec2::new(input_direction.x, input_direction.y);
-        direction * 500.0
     }
 }
 

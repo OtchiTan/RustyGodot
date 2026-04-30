@@ -17,7 +17,7 @@ pub struct InputPacket {
     pub aim_y: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Input {
     Up = 0,
     Down = 1,

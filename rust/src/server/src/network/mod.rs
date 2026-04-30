@@ -71,6 +71,7 @@ fn poll(
         ev_client_connected,
         ev_client_disconnected,
     );
+
     input_manager.handle_input(poll_events, players, clients);
 }
 

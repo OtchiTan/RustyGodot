@@ -29,7 +29,8 @@ func _physics_process(_delta: float) -> void:
 			"move_down",
 		)
 		
-		velocity = direction * boat_speed
+		var target_velocity = direction.normalized() * boat_speed
+		velocity = velocity.lerp(target_velocity, 0.3)
 		move_and_slide()
 		
 		input_manager.add_direction_input(direction)

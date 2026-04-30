@@ -2,7 +2,7 @@
 use crate::replication::replication_manager::{ClientEntityLink, ReplicationManager};
 use bevy::prelude::*;
 use bevy_rapier2d::dynamics::Velocity;
-use bevy_rapier2d::prelude::{Collider, GravityScale, RigidBody};
+use bevy_rapier2d::prelude::{Collider, Damping, GravityScale, RigidBody};
 
 #[derive(Message, Debug)]
 pub struct ClientConnected {
@@ -35,6 +35,7 @@ pub fn on_client_connected(
                     angvel: 0.0,
                 },
                 GravityScale(0.0),
+                Damping { linear_damping: 0.1, angular_damping: 0.0 },
             ))
             .id();
 

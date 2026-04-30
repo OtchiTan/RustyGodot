@@ -945,6 +945,15 @@ autoplay = "idle_r"
 scale = Vector2(8, 8)
 shape = SubResource("CircleShape2D_0063d")
 
+[node name="DebugLabel" type="Label" parent="GDPlayer" unique_id=2130272578]
+unique_name_in_owner = true
+offset_left = -77.0
+offset_top = -210.0
+offset_right = 67.0
+offset_bottom = -155.0
+theme_override_font_sizes/font_size = 48
+text = "1"
+
 [node name="GDInputManager" type="GDInputManager" parent="." unique_id=825383425]
 
 [connection signal="deserialize" from="." to="GDPlayer" method="_on_boat_deserialize"]
