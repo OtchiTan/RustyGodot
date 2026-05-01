@@ -35,6 +35,7 @@ pub struct GDNetworkManager {
     snapshots: VecDeque<Snapshot>,
     server_frame: u32,
     last_time_since_ping: f64,
+    last_server_data_received: f64,
     server_frequency: f64,
 
     pub client_id: u32,
@@ -55,17 +56,21 @@ impl INode for GDNetworkManager {
             server_frame: 0,
             last_time_since_ping: 0.0,
             last_snapshot_handled: 0.0,
+            last_server_data_received: 0.0,
             server_frequency: 1.0,
         }
     }
 
     fn process(&mut self, delta: f64) {
         self.last_snapshot_handled += delta;
+        self.last_server_data_received += delta;
 
         let mut buf = [0; 1200];
         if let Some(socket) = self.socket.as_mut() {
             match socket.poll(&mut buf) {
                 Some((size, _)) => {
+                    self.last_server_data_received = 0.0;
+                    
                     let buf = &mut buf[..size];
                     let mut stream_reader = StreamReader::new(buf.to_vec());
                     let message_header: MessageHeader = stream_reader.read_serializable();
@@ -188,7 +193,7 @@ impl GDNetworkManager {
                 self.send_message(MessageType::Hsk, &mut message);
             }
             ConnectionState::Connected => {
-                if self.last_snapshot_handled > 1.0 {
+                if self.last_server_data_received > 1.0 {
                     self.set_connection_state(Spurious)
                 }
             }

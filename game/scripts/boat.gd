@@ -19,8 +19,6 @@ const ANIMATION_FRAMES = [
 ]
 
 func _physics_process(_delta: float) -> void:	
-	var direction = Vector2.ZERO
-	
 	if is_locally_owned():
 		direction = Input.get_vector(
 			"move_left",
@@ -31,12 +29,11 @@ func _physics_process(_delta: float) -> void:
 		
 		var target_velocity = direction.normalized() * boat_speed
 		velocity = velocity.lerp(target_velocity, 0.3)
+		velocity = velocity.round()
 		move_and_slide()
 		
 		input_manager.add_direction_input(direction)
 		input_manager.send_input()
-	else:
-		direction = replicated_velocity
 	
 	var state = "idle"
 	

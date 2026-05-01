@@ -28,9 +28,7 @@ impl InputManager {
                 .find(|(player, _)| player.net_id == buffer.node_id)
             {
                 for input_packet in buffer.packets {
-                    if input_packet.sequence <= self.server_frame
-                        && input_packet.sequence > player.last_queued_input
-                    {
+                    if input_packet.sequence > player.last_queued_input {
                         player.last_queued_input = input_packet.sequence;
                         player.input_queue.push_back(input_packet);
                     }
@@ -46,18 +44,14 @@ impl InputManager {
         }
 
         for (mut player, mut velocity) in players.iter_mut() {
-            let input_count = player.input_queue.len();
-            let mut total_direction = Vec2::new(0.0, 0.0);
-            while let Some(next_input) = player.input_queue.pop_front() {
+            if let Some(next_input) = player.input_queue.pop_front() {
                 let input_direction =
                     next_input.read_vector(Input::Right, Input::Left, Input::Up, Input::Down);
-                total_direction += Vec2::new(input_direction.x, input_direction.y);
-            }
-            if input_count > 0 {
-                let average_direction = (total_direction / input_count as f32).normalize_or_zero();
-                let target_velocity = average_direction * player.player_speed;
+                player.direction = Vec2::new(input_direction.x, input_direction.y).normalize_or_zero();
+                let target_velocity = player.direction * player.player_speed;
 
                 velocity.linvel = velocity.linvel.lerp(target_velocity, 0.3);
+                velocity.linvel = velocity.linvel.round()
             }
         }
 

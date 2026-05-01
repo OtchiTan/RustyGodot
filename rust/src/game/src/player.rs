@@ -19,6 +19,8 @@ pub struct GDPlayer {
 
     #[var]
     replicated_velocity: Vector2,
+    #[var]
+    direction: Vector2,
 }
 
 #[godot_api]
@@ -29,6 +31,7 @@ impl ICharacterBody2D for GDPlayer {
             owner_id: 0,
             network_manager: None,
             replicated_velocity: Vector2::new(0.0, 0.0),
+            direction: Vector2::new(0.0, 0.0),
         }
     }
 
@@ -65,6 +68,8 @@ impl GDPlayer {
         let velocity = sr2.read_vec2();
         let velocity = Vector2::new(velocity.x, velocity.y);
         self.owner_id = sr2.read_u32();
+        let direction = sr2.read_vec2();
+        self.direction = Vector2::new(direction.x, direction.y);
 
         let old_position = Vector2::new(position1.x, position1.y);
         let mut next_position = Vector2::new(position2.x, position2.y);
